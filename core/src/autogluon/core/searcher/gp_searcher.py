@@ -181,7 +181,7 @@ class GPFIFOSearcher(BaseSearcher):
             _gp_searcher = self.gp_searcher.clone_from_state(state)
         # Use copy constructor
         return GPFIFOSearcher(
-            reward_attribute=self._reward_attribute,
+            self.configspace, reward_attribute=self._reward_attribute,
             _gp_searcher=_gp_searcher)
 
     @property
@@ -337,9 +337,6 @@ class GPMultiFidelitySearcher(BaseSearcher):
         assert isinstance(scheduler, HyperbandScheduler), \
             "This searcher requires HyperbandScheduler scheduler"
         super().configure_scheduler(scheduler)
-        with self._gp_lock:
-            self.gp_searcher.set_map_resource_to_index(
-                scheduler.map_resource_to_index())
         self._resource_attribute = scheduler._time_attr
 
     def get_config(self, **kwargs):
@@ -398,7 +395,7 @@ class GPMultiFidelitySearcher(BaseSearcher):
             _gp_searcher = self.gp_searcher.clone_from_state(state)
         # Use copy constructor
         return GPMultiFidelitySearcher(
-            reward_attribute=self._reward_attribute,
+            self.configspace, reward_attribute=self._reward_attribute,
             resource_attribute=self._resource_attribute,
             _gp_searcher=_gp_searcher)
 
