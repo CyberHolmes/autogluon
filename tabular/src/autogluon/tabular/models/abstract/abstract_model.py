@@ -40,9 +40,9 @@ class AbstractModel:
                 path (str): directory where to store all outputs.
                 name (str): name of subdirectory inside path where model will be saved.
                 problem_type (str): type of problem this model will handle. Valid options: ['binary', 'multiclass', 'regression'].
-                eval_metric (str or autogluon.utils.tabular.metrics.Scorer): objective function the model intends to optimize. If None, will be inferred based on problem_type.
+                eval_metric (str or autogluon.tabular.metrics.Scorer): objective function the model intends to optimize. If None, will be inferred based on problem_type.
                 hyperparameters (dict): various hyperparameters that will be used by model (can be search spaces instead of fixed values).
-                feature_metadata (autogluon.utils.tabular.features.feature_metadata.FeatureMetadata): contains feature type information that can be used to identify special features such as text ngrams and datetime as well as which features are numerical vs categorical
+                feature_metadata (autogluon.tabular.features.feature_metadata.FeatureMetadata): contains feature type information that can be used to identify special features such as text ngrams and datetime as well as which features are numerical vs categorical
         """
         self.name = name
         self.path_root = path
@@ -64,7 +64,7 @@ class AbstractModel:
 
         if self.eval_metric.name in OBJECTIVES_TO_NORMALIZE:
             self.normalize_pred_probas = True
-            logger.debug(self.name +" predicted probabilities will be transformed to never =0 since eval_metric=" + self.eval_metric.name)
+            logger.debug(f"{self.name} predicted probabilities will be transformed to never =0 since eval_metric='{self.eval_metric.name}'")
         else:
             self.normalize_pred_probas = False
 
@@ -118,13 +118,28 @@ class AbstractModel:
     def is_fit(self) -> bool:
         return self.model is not None
 
+    # TODO: v0.1 update to be aligned with _set_default_auxiliary_params(), add _get_default_params()
     def _set_default_params(self):
         pass
 
     def _set_default_auxiliary_params(self):
+        """
+        Sets the default aux parameters of the model.
+        This method should not be extended by inheriting models, instead extend _get_default_auxiliary_params.
+        """
         # TODO: Consider adding to get_info() output
+        default_auxiliary_params = self._get_default_auxiliary_params()
+        for key, value in default_auxiliary_params.items():
+            self._set_default_param_value(key, value, params=self.params_aux)
+
+    # TODO: v0.1 consider adding documentation to each model highlighting which feature dtypes are valid
+    def _get_default_auxiliary_params(self) -> dict:
+        """
+        Dictionary of auxiliary parameters that dictate various model-agnostic logic, such as:
+            Which column dtypes are filtered out of the input data, or how much memory the model is allowed to use.
+        """
         default_auxiliary_params = dict(
-            max_memory_usage_ratio=1.0,  # Ratio of memory usage allowed by the model. Values > 1.0 have an increased risk of causing OOM errors.
+            max_memory_usage_ratio=1.0,  # Ratio of memory usage allowed by the model. Values > 1.0 have an increased risk of causing OOM errors. Used in memory checks during model training to avoid OOM errors.
             # TODO: Add more params
             # max_memory_usage=None,
             # max_disk_usage=None,
@@ -137,11 +152,13 @@ class AbstractModel:
             # max_early_stopping_rounds=None,
             # use_orig_features=True,  # TODO: Only for stackers
             # TODO: add option for only top-k ngrams
-            ignored_type_group_special=[],  # List, drops any features in `self.feature_metadata.type_group_map_special[type]` for type in `ignored_type_group_special`. | Currently undocumented in task.
-            ignored_type_group_raw=[],  # List, drops any features in `self.feature_metadata.type_group_map_raw[type]` for type in `ignored_type_group_raw`. | Currently undocumented in task.
+            ignored_type_group_special=None,  # List, drops any features in `self.feature_metadata.type_group_map_special[type]` for type in `ignored_type_group_special`. | Currently undocumented in task.
+            ignored_type_group_raw=None,  # List, drops any features in `self.feature_metadata.type_group_map_raw[type]` for type in `ignored_type_group_raw`. | Currently undocumented in task.
+            get_features_kwargs=None,  # Kwargs for `autogluon.tabular.features.feature_metadata.FeatureMetadata.get_features()`. Overrides ignored_type_group_special and ignored_type_group_raw. | Currently undocumented in task.
+            # TODO: v0.1 Document get_features_kwargs_extra in task.fit
+            get_features_kwargs_extra=None,  # If not None, applies an additional feature filter to the result of get_feature_kwargs. This should be reserved for users and be None by default. | Currently undocumented in task.
         )
-        for key, value in default_auxiliary_params.items():
-            self._set_default_param_value(key, value, params=self.params_aux)
+        return default_auxiliary_params
 
     def _set_default_param_value(self, param_name, param_value, params=None):
         if params is None:
@@ -189,19 +206,58 @@ class AbstractModel:
         self.path = self.path[:-len(self.name) - 1] + name + os.path.sep
         self.name = name
 
-    # Extensions of preprocess must act identical in bagged situations, otherwise test-time predictions will be incorrect
-    # This means preprocess cannot be used for normalization
-    # TODO: Add preprocess_stateful() to enable stateful preprocessing for models such as KNN
-    def preprocess(self, X):
+    def preprocess(self, X, preprocess_nonadaptive=True, preprocess_stateful=True, **kwargs):
+        if preprocess_nonadaptive:
+            X = self._preprocess_nonadaptive(X, **kwargs)
+        if preprocess_stateful:
+            X = self._preprocess(X, **kwargs)
+        return X
+
+    # TODO: Remove kwargs?
+    def _preprocess(self, X: pd.DataFrame, **kwargs):
+        """
+        Data transformation logic should be added here.
+        In bagged ensembles, preprocessing code that lives in `_preprocess` will be executed on each child model once per inference call.
+        If preprocessing code could produce different output depending on the child model that processes the input data, then it must live here.
+
+        When in doubt, put preprocessing code here instead of in `_preprocess_nonadaptive`.
+        """
+        return X
+
+    # TODO: Remove kwargs?
+    def _preprocess_nonadaptive(self, X: pd.DataFrame, **kwargs) -> pd.DataFrame:
+        """
+        Note: This method is intended for advanced users. It is usually sufficient to implement all preprocessing in `_preprocess` and leave this method untouched.
+            The potential benefit of implementing preprocessing in this method is an inference speedup when used in a bagged ensemble.
+        Data transformation logic that is non-stateful or ignores internal data values beyond feature dtypes should be added here.
+        In bagged ensembles, preprocessing code that lives here will be executed only once per inference call regardless of the number of child models.
+        If preprocessing code will produce the same output regardless of which child model processes the input data, then it should live here to avoid redundant repeated processing for each child.
+        This means this method cannot be used for data normalization. Refer to `_preprocess` instead.
+        """
         if self.features is not None:
             # TODO: In online-inference this becomes expensive, add option to remove it (only safe in controlled environment where it is already known features are present
             if list(X.columns) != self.features:
                 return X[self.features]
         else:
             self.features = list(X.columns)  # TODO: add fit and transform versions of preprocess instead of doing this
-            ignored_type_group_raw = self.params_aux.get('ignored_type_group_raw', [])
-            ignored_type_group_special = self.params_aux.get('ignored_type_group_special', [])
-            valid_features = self.feature_metadata.get_features(invalid_raw_types=ignored_type_group_raw, invalid_special_types=ignored_type_group_special)
+            # TODO: Consider changing how this works or where it is done
+            if self.feature_metadata is None:
+                feature_metadata = FeatureMetadata.from_df(X)
+            else:
+                feature_metadata = self.feature_metadata
+            get_features_kwargs = self.params_aux.get('get_features_kwargs', None)
+            if get_features_kwargs is not None:
+                valid_features = feature_metadata.get_features(**get_features_kwargs)
+            else:
+                ignored_type_group_raw = self.params_aux.get('ignored_type_group_raw', None)
+                ignored_type_group_special = self.params_aux.get('ignored_type_group_special', None)
+                valid_features = feature_metadata.get_features(invalid_raw_types=ignored_type_group_raw, invalid_special_types=ignored_type_group_special)
+            get_features_kwargs_extra = self.params_aux.get('get_features_kwargs_extra', None)
+            if get_features_kwargs_extra is not None:
+                valid_features_extra = feature_metadata.get_features(**get_features_kwargs_extra)
+                valid_features = [feature for feature in valid_features if feature in valid_features_extra]
+            dropped_features = [feature for feature in self.features if feature not in valid_features]
+            logger.log(10, f'\tDropped {len(dropped_features)} of {len(self.features)} features.')
             self.features = [feature for feature in self.features if feature in valid_features]
             if not self.features:
                 raise NoValidFeatures
@@ -241,23 +297,22 @@ class AbstractModel:
         X_train = self.preprocess(X_train)
         self.model = self.model.fit(X_train, y_train)
 
-    def predict(self, X, preprocess=True):
-        y_pred_proba = self.predict_proba(X, preprocess=preprocess)
+    def predict(self, X, **kwargs):
+        y_pred_proba = self.predict_proba(X, **kwargs)
         y_pred = get_pred_from_proba(y_pred_proba=y_pred_proba, problem_type=self.problem_type)
         return y_pred
 
-    def predict_proba(self, X, preprocess=True, normalize=None):
+    def predict_proba(self, X, normalize=None, **kwargs):
         if normalize is None:
             normalize = self.normalize_pred_probas
-        y_pred_proba = self._predict_proba(X=X, preprocess=preprocess)
+        y_pred_proba = self._predict_proba(X=X, **kwargs)
         if normalize:
             y_pred_proba = normalize_pred_probas(y_pred_proba, self.problem_type)
         y_pred_proba = y_pred_proba.astype(np.float32)
         return y_pred_proba
 
-    def _predict_proba(self, X, preprocess=True):
-        if preprocess:
-            X = self.preprocess(X)
+    def _predict_proba(self, X, **kwargs):
+        X = self.preprocess(X, **kwargs)
 
         if self.problem_type == REGRESSION:
             return self.model.predict(X)
@@ -275,18 +330,20 @@ class AbstractModel:
         else:
             return y_pred_proba[:, 1]
 
-    def score(self, X, y, eval_metric=None, metric_needs_y_pred=None, preprocess=True):
+    # TODO: Improve custom eval_metric support
+    def score(self, X, y, eval_metric=None, metric_needs_y_pred=None, **kwargs):
         if eval_metric is None:
             eval_metric = self.eval_metric
         if metric_needs_y_pred is None:
             metric_needs_y_pred = self.metric_needs_y_pred
         if metric_needs_y_pred:
-            y_pred = self.predict(X=X, preprocess=preprocess)
+            y_pred = self.predict(X=X, **kwargs)
             return eval_metric(y, y_pred)
         else:
-            y_pred_proba = self.predict_proba(X=X, preprocess=preprocess)
+            y_pred_proba = self.predict_proba(X=X, **kwargs)
             return eval_metric(y, y_pred_proba)
 
+    # TODO: Improve custom eval_metric support
     def score_with_y_pred_proba(self, y, y_pred_proba, eval_metric=None, metric_needs_y_pred=None):
         if eval_metric is None:
             eval_metric = self.eval_metric
@@ -354,7 +411,7 @@ class AbstractModel:
         return model
 
     # TODO: Consider disabling feature pruning when num_features is high (>1000 for example), or using a faster feature importance calculation method
-    def compute_feature_importance(self, X, y, features_to_use=None, preprocess=True, subsample_size=10000, silent=False, **kwargs) -> pd.Series:
+    def compute_feature_importance(self, X, y, features_to_use=None, subsample_size=10000, silent=False, **kwargs) -> pd.Series:
         if (subsample_size is not None) and (len(X) > subsample_size):
             # Reset index to avoid error if duplicated indices.
             X = X.reset_index(drop=True)
@@ -366,8 +423,7 @@ class AbstractModel:
             X = X.copy()
             y = y.copy()
 
-        if preprocess:
-            X = self.preprocess(X)
+        X = self.preprocess(X=X, preprocess_stateful=False, **kwargs)
 
         if not features_to_use:
             features = list(X.columns.values)
@@ -380,10 +436,10 @@ class AbstractModel:
         banned_features = [feature for feature, importance in feature_importance_quick_dict.items() if importance == 0 and feature in features]
         features = [feature for feature in features if feature not in banned_features]
 
-        permutation_importance_dict = self.compute_permutation_importance(X=X, y=y, features=features, preprocess=False, silent=silent)
+        permutation_importance_dict = self.compute_permutation_importance(X=X, y=y, features=features, preprocess_nonadaptive=False, silent=silent)
 
         feature_importances = pd.Series(permutation_importance_dict)
-        results_banned = pd.Series(data=[0 for _ in range(len(banned_features))], index=banned_features)
+        results_banned = pd.Series(data=[0 for _ in range(len(banned_features))], index=banned_features, dtype='float64')
         feature_importances = pd.concat([feature_importances, results_banned])
         feature_importances = feature_importances.sort_values(ascending=False)
 
@@ -394,17 +450,17 @@ class AbstractModel:
     # Compute feature importance via permutation importance
     # Note: Expensive to compute
     #  Time to compute is O(predict_time*num_features)
-    def compute_permutation_importance(self, X, y, features: list, preprocess=True, silent=False) -> dict:
+    def compute_permutation_importance(self, X, y, features: list, preprocess_nonadaptive=True, silent=False) -> dict:
         time_start = time.time()
 
         feature_count = len(features)
         if not silent:
             logger.log(20, f'Computing permutation importance for {feature_count} features on {self.name} ...')
-        if preprocess:
-            X = self.preprocess(X)
+        if preprocess_nonadaptive:
+            X = self.preprocess(X, preprocess_stateful=False)
 
         time_start_score = time.time()
-        model_score_base = self.score(X=X, y=y, preprocess=False)
+        model_score_base = self.score(X=X, y=y, preprocess_nonadaptive=False)
         time_score = time.time() - time_start_score
 
         if not silent:
@@ -447,9 +503,9 @@ class AbstractModel:
                 row_index = row_index_end
 
             if self.metric_needs_y_pred:
-                y_pred = self.predict(X_raw, preprocess=False)
+                y_pred = self.predict(X_raw, preprocess_nonadaptive=False)
             else:
-                y_pred = self.predict_proba(X_raw, preprocess=False)
+                y_pred = self.predict_proba(X_raw, preprocess_nonadaptive=False)
 
             row_index = 0
             for feature in parallel_computed_features:

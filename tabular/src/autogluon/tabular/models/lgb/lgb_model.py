@@ -19,6 +19,7 @@ from .lgb_utils import construct_dataset
 from ..abstract.abstract_model import AbstractModel
 from ..utils import fixedvals_from_searchspaces
 from ...constants import BINARY, MULTICLASS, REGRESSION, SOFTCLASS
+from ...features.feature_metadata import R_OBJECT
 from autogluon.core.utils.savers import save_pkl
 from autogluon.core.utils import try_import_lightgbm
 from autogluon.core import Int, Space
@@ -171,9 +172,8 @@ class LGBModel(AbstractModel):
         else:
             self.params_trained['num_boost_round'] = self.model.current_iteration()
 
-    def _predict_proba(self, X, preprocess=True):
-        if preprocess:
-            X = self.preprocess(X)
+    def _predict_proba(self, X, **kwargs):
+        X = self.preprocess(X, **kwargs)
         if self.problem_type == REGRESSION:
             return self.model.predict(X)
 
@@ -199,8 +199,8 @@ class LGBModel(AbstractModel):
             else:  # Should this ever happen?
                 return y_pred_proba[:, 1]
 
-    def preprocess(self, X, is_train=False):
-        X = super().preprocess(X=X)
+    def _preprocess_nonadaptive(self, X, is_train=False, **kwargs):
+        X = super()._preprocess_nonadaptive(X=X, **kwargs)
 
         if is_train:
             for column in X.columns:
@@ -375,3 +375,11 @@ class LGBModel(AbstractModel):
             inverse_internal_feature_map = {i: feature for feature, i in self._internal_feature_map.items()}
             importance_dict = {inverse_internal_feature_map[i]: importance for i, importance in importance_dict.items()}
         return importance_dict
+
+    def _get_default_auxiliary_params(self) -> dict:
+        default_auxiliary_params = super()._get_default_auxiliary_params()
+        extra_auxiliary_params = dict(
+            ignored_type_group_raw=[R_OBJECT],
+        )
+        default_auxiliary_params.update(extra_auxiliary_params)
+        return default_auxiliary_params

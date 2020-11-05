@@ -29,7 +29,7 @@ from .tabular_nn_trial import tabular_nn_trial
 from ..abstract.abstract_model import AbstractModel
 from ..utils import fixedvals_from_searchspaces
 from ...constants import BINARY, MULTICLASS, REGRESSION, SOFTCLASS
-from ...features.feature_metadata import R_INT, R_FLOAT, R_CATEGORY, R_OBJECT
+from ...features.feature_metadata import R_INT, R_FLOAT, R_CATEGORY, R_OBJECT, S_TEXT_NGRAM, S_TEXT_AS_CATEGORY
 from ...metrics import log_loss, roc_auc
 from autogluon.core import Space
 from autogluon.core.utils import try_import_mxboard
@@ -102,13 +102,14 @@ class TabularNeuralNetModel(AbstractModel):
         for param, val in default_params.items():
             self._set_default_param_value(param, val)
 
-    def _set_default_auxiliary_params(self):
-        default_auxiliary_params = dict(
-            ignored_type_group_special=['text_ngram', 'text_as_category'],
+    def _get_default_auxiliary_params(self) -> dict:
+        default_auxiliary_params = super()._get_default_auxiliary_params()
+        extra_auxiliary_params = dict(
+            ignored_type_group_raw=[R_OBJECT],
+            ignored_type_group_special=[S_TEXT_NGRAM, S_TEXT_AS_CATEGORY],
         )
-        for key, value in default_auxiliary_params.items():
-            self._set_default_param_value(key, value, params=self.params_aux)
-        super()._set_default_auxiliary_params()
+        default_auxiliary_params.update(extra_auxiliary_params)
+        return default_auxiliary_params
 
     def _get_default_searchspace(self):
         return get_default_searchspace(self.problem_type, num_classes=None)
@@ -384,9 +385,9 @@ class TabularNeuralNetModel(AbstractModel):
         self.params_trained['num_epochs'] = best_val_epoch + 1
         return
 
-    def _predict_proba(self, X, preprocess=True):
-        """ To align predict wiht abstract_model API.
-            Preprocess here only refers to feature processing stesp done by all AbstractModel objects,
+    def _predict_proba(self, X, **kwargs):
+        """ To align predict with abstract_model API.
+            Preprocess here only refers to feature processing steps done by all AbstractModel objects,
             not tabularNN-specific preprocessing steps.
             If X is not DataFrame but instead TabularNNDataset object, we can still produce predictions,
             but cannot use preprocess in this case (needs to be already processed).
@@ -394,8 +395,7 @@ class TabularNeuralNetModel(AbstractModel):
         if isinstance(X, TabularNNDataset):
             return self._predict_tabular_data(new_data=X, process=False, predict_proba=True)
         elif isinstance(X, pd.DataFrame):
-            if preprocess:
-                X = self.preprocess(X)
+            X = self.preprocess(X, **kwargs)
             return self._predict_tabular_data(new_data=X, process=True, predict_proba=True)
         else:
             raise ValueError("X must be of type pd.DataFrame or TabularNNDataset, not type: %s" % type(X))
