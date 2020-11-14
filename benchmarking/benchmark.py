@@ -8,12 +8,12 @@ import torchvision.transforms as transforms
 from tqdm.auto import tqdm
 import argparse
 from datetime import datetime
-import wandb
+
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--num_cpus', default=4, type=int, help='number of CPUs to use')
-parser.add_argument('--num_gpus', default=0, type=int, help='number of GPUs to use')
+parser.add_argument('--num_cpus', default=8, type=int, help='number of CPUs to use')
+parser.add_argument('--num_gpus', default=1, type=int, help='number of GPUs to use')
 parser.add_argument('--num_trials', default=6, type=int, help='number of trials to run')
 parser.add_argument('--ip', default=None, help='additional ips to be added')
 
@@ -237,8 +237,6 @@ for task in tasks:
 
     # run the task with each scheduler
     for scheduler in schedulers:
-        # initialize the logging
-        run = wandb.init(project='autogluon')
 
         # display the scheduler and available resources
         print('')
@@ -255,9 +253,6 @@ for task in tasks:
         # stop the clock
         stop_time = datetime.now()
         scheduler_runtimes.append((stop_time - start_time).total_seconds())
-
-        # end the run
-        run.finish()
 
     run_times.append(scheduler_runtimes)
 
