@@ -12,7 +12,7 @@ import wandb
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--num_cpus', default=6, type=int, help='number of CPUs to use')
+parser.add_argument('--num_cpus', default=4, type=int, help='number of CPUs to use')
 parser.add_argument('--num_gpus', default=0, type=int, help='number of GPUs to use')
 parser.add_argument('--num_trials', default=6, type=int, help='number of trials to run')
 parser.add_argument('--ip', default=None, help='additional ips to be added')
@@ -156,7 +156,7 @@ def train_image_classification(args, reporter):
         # set the model to evaluation mode
         model.eval()
 
-        # keep track of the test loss and correct predcitons
+        # keep track of the test loss and correct predictions
         test_loss, correct, total = 0, 0, 0
 
         # stop tracking the gradients, reduces memory consumption
@@ -173,7 +173,7 @@ def train_image_classification(args, reporter):
                 loss = criterion(outputs, targets)
                 test_loss += loss.item()
 
-                # keep track of thethe total correct predicitons
+                # keep track of the total correct predictions
                 _, predicted = outputs.max(1)
                 total += targets.size(0)
                 correct += predicted.eq(targets).sum().item()
@@ -210,7 +210,7 @@ for task in tasks:
             num_trials=args.num_trials,
             time_attr='epoch',
             reward_attr='accuracy',
-             dist_ip_addrs=ext_ips
+            # dist_ip_addrs=ext_ips
         ),  # add the FIFO scheduler
 
         ag.scheduler.HyperbandScheduler(
@@ -219,7 +219,7 @@ for task in tasks:
             num_trials=args.num_trials,
             time_attr='epoch',
             reward_attr='accuracy',
-            dist_ip_addrs=ext_ips
+            # dist_ip_addrs=ext_ips
         ),  # add the Hyperband scheduler
 
         ag.scheduler.RLScheduler(
@@ -228,8 +228,8 @@ for task in tasks:
             num_trials=args.num_trials,
             time_attr='epoch',
             reward_attr='accuracy',
-            dist_ip_addrs = ext_ips
-        )  # add the FIFO scheduler
+            # dist_ip_addrs = ext_ips
+        )   # add the FIFO scheduler
     ]
 
     # define the scheduler run time list
