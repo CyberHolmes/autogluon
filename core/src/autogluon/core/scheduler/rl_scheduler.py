@@ -203,6 +203,8 @@ class RLScheduler(FIFOScheduler):
             loss.backward()
             self.controller_optimizer.step(batch_size)
             logger.debug('controller loss: {}'.format(loss.asscalar()))
+            if (rewards[0] >= 90):
+                break
 
     def _run_async(self):
         try_import_mxnet()
@@ -333,7 +335,6 @@ class RLScheduler(FIFOScheduler):
 
         for config in configs:
             rewards.append(results[pickle.dumps(config)])
-
         return rewards
 
     def add_job(self, task, **kwargs):
