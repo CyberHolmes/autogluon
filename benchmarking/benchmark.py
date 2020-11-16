@@ -212,8 +212,8 @@ for task in tasks:
             time_attr='epoch',
             reward_attr='accuracy',
             time_out = math.inf,
-            max_reward=95
-            # dist_ip_addrs=ext_ips
+            max_reward=95,
+            dist_ip_addrs=ext_ips
         ),  # add the FIFO scheduler
 
         ag.scheduler.HyperbandScheduler(
@@ -222,8 +222,8 @@ for task in tasks:
             time_attr='epoch',
             reward_attr='accuracy',
             time_out=math.inf,
-            max_reward=95
-            # dist_ip_addrs=ext_ips
+            max_reward=95,
+            dist_ip_addrs=ext_ips
         ),  # add the Hyperband scheduler
 
         ag.scheduler.RLScheduler(
@@ -233,8 +233,8 @@ for task in tasks:
             time_out = math.inf,
             time_attr='epoch',
             reward_attr='accuracy',
-            max_reward=95
-            # dist_ip_addrs = ext_ips
+            max_reward=95,
+            dist_ip_addrs = ext_ips
         )   # add the FIFO scheduler
     ]
 
