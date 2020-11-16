@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--num_cpus', default=4, type=int, help='number of CPUs to use')
 parser.add_argument('--num_gpus', default=0, type=int, help='number of GPUs to use')
-parser.add_argument('--num_trials', default=6, type=int, help='number of trials to run')
+parser.add_argument('--max_reward', default=98.5, type=int, help='convergence criterion')
 parser.add_argument('--ip', default=None, help='additional ips to be added')
 
 args = parser.parse_args()
@@ -212,7 +212,7 @@ for task in tasks:
             time_attr='epoch',
             reward_attr='accuracy',
             time_out = math.inf,
-            max_reward=95,
+            max_reward=args.max_reward,
             dist_ip_addrs=ext_ips
         ),  # add the FIFO scheduler
 
@@ -222,7 +222,7 @@ for task in tasks:
             time_attr='epoch',
             reward_attr='accuracy',
             time_out=math.inf,
-            max_reward=95,
+            max_reward=args.max_reward,
             dist_ip_addrs=ext_ips
         ),  # add the Hyperband scheduler
 
@@ -233,7 +233,7 @@ for task in tasks:
             time_out = math.inf,
             time_attr='epoch',
             reward_attr='accuracy',
-            max_reward=95,
+            max_reward=args.max_reward,
             dist_ip_addrs = ext_ips
         )   # add the FIFO scheduler
     ]
