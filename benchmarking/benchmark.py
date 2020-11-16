@@ -14,8 +14,8 @@ from datetime import datetime
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--num_cpus', default=8, type=int, help='number of CPUs to use')
-parser.add_argument('--num_gpus', default=1, type=int, help='number of GPUs to use')
+parser.add_argument('--num_cpus', default=4, type=int, help='number of CPUs to use')
+parser.add_argument('--num_gpus', default=0, type=int, help='number of GPUs to use')
 parser.add_argument('--num_trials', default=6, type=int, help='number of trials to run')
 parser.add_argument('--ip', default=None, help='additional ips to be added')
 
