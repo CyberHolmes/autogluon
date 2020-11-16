@@ -1,7 +1,9 @@
+import sys
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import autogluon.core as ag
+import math
 
 import torchvision
 import torchvision.transforms as transforms
@@ -84,7 +86,7 @@ def get_data_loaders(batch_size):
 
 # Hyper Parameters to search over
 @ag.args(
-    lr=ag.space.Categorical(0.01, 0.2),
+    lr=ag.space.Categorical(0.01, 0.02),
     wd=ag.space.Categorical(1e-4, 5e-4),
     epochs=ag.space.Categorical(5, 6),
     hidden_conv=ag.space.Categorical(6, 7),
@@ -207,27 +209,31 @@ for task in tasks:
         ag.scheduler.FIFOScheduler(
             task,
             resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
-            num_trials=args.num_trials,
             time_attr='epoch',
             reward_attr='accuracy',
+            time_out = math.inf,
+            max_reward=95
             # dist_ip_addrs=ext_ips
         ),  # add the FIFO scheduler
 
         ag.scheduler.HyperbandScheduler(
             task,
             resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
-            num_trials=args.num_trials,
             time_attr='epoch',
             reward_attr='accuracy',
+            time_out=math.inf,
+            max_reward=95
             # dist_ip_addrs=ext_ips
         ),  # add the Hyperband scheduler
 
         ag.scheduler.RLScheduler(
             task,
             resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
-            num_trials=args.num_trials,
+            num_trials= 10000,
+            time_out = math.inf,
             time_attr='epoch',
             reward_attr='accuracy',
+            max_reward=95
             # dist_ip_addrs = ext_ips
         )   # add the FIFO scheduler
     ]
@@ -252,7 +258,7 @@ for task in tasks:
 
         # stop the clock
         stop_time = datetime.now()
-        scheduler_runtimes.append((stop_time - start_time).total_seconds())
+        scheduler_runtimes.append([(stop_time - start_time).total_seconds(), scheduler.get_best_reward()])
 
     run_times.append(scheduler_runtimes)
 
