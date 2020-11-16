@@ -158,6 +158,9 @@ class RLScheduler(FIFOScheduler):
                 msg = 'checkpoint path {} is not available for resume.'.format(checkpoint)
                 logger.exception(msg)
 
+        # add the max reward
+        self.max_reward = kwargs['max_reward']
+
     def run(self, **kwargs):
         """Run multiple number of trials
         """
@@ -203,7 +206,7 @@ class RLScheduler(FIFOScheduler):
             loss.backward()
             self.controller_optimizer.step(batch_size)
             logger.debug('controller loss: {}'.format(loss.asscalar()))
-            if (rewards[0] >= 90):
+            if (rewards[0] >= self.max_reward):
                 break
 
     def _run_async(self):
