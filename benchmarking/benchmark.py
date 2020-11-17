@@ -18,7 +18,7 @@ parser.add_argument('--num_cpus', default=4, type=int, help='number of CPUs to u
 parser.add_argument('--num_gpus', default=0, type=int, help='number of GPUs to use')
 parser.add_argument('--max_reward', default=90, type=int, help='convergence criterion')
 parser.add_argument('--ip', default=None, help='additional ips to be added')
-parser.add_argument('--choice',default=0,type=int,help = 'Choice for scheduler')
+parser.add_argument('--scheduler', type=str, default='fifo', help='scheduler name (default: fifo)')
 
 args = parser.parse_args()
 
@@ -200,8 +200,9 @@ tasks = [
 
 # define run time table
 run_times = []
-ext_ips = [args.ip]
 
+ext_ips = open('ips', 'r').read().split('\n')
+print(ext_ips)
 # Run every task with all available schedulers
 for task in tasks:
 
@@ -245,14 +246,14 @@ for task in tasks:
     #switch case for choice of scheduler
     def scheduler_choice(argument):
         switcher = {
-            0: schedulers[0],
-            1: schedulers[1],
-            2: schedulers[2],
+            'fifo': schedulers[0],
+            'hyperband': schedulers[1],
+            'rl': schedulers[2],
         }
         return switcher.get(argument)
     # run the task with selected scheduler
     print('')
-    scheduler = scheduler_choice(args.choice)
+    scheduler = scheduler_choice(args.scheduler)
     # display the scheduler and available resources
     print(scheduler)
     print('')
