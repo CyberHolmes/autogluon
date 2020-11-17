@@ -16,8 +16,9 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--num_cpus', default=4, type=int, help='number of CPUs to use')
 parser.add_argument('--num_gpus', default=0, type=int, help='number of GPUs to use')
-parser.add_argument('--max_reward', default=98.5, type=int, help='convergence criterion')
+parser.add_argument('--max_reward', default=90, type=int, help='convergence criterion')
 parser.add_argument('--ip', default=None, help='additional ips to be added')
+parser.add_argument('--choice',default=0,type=int,help = 'Choice for scheduler')
 
 args = parser.parse_args()
 
@@ -213,7 +214,7 @@ for task in tasks:
             reward_attr='accuracy',
             time_out = math.inf,
             max_reward=args.max_reward,
-            dist_ip_addrs=ext_ips
+            #dist_ip_addrs=ext_ips
         ),  # add the FIFO scheduler
 
         ag.scheduler.HyperbandScheduler(
@@ -223,7 +224,7 @@ for task in tasks:
             reward_attr='accuracy',
             time_out=math.inf,
             max_reward=args.max_reward,
-            dist_ip_addrs=ext_ips
+            #dist_ip_addrs=ext_ips
         ),  # add the Hyperband scheduler
 
         ag.scheduler.RLScheduler(
@@ -234,31 +235,38 @@ for task in tasks:
             time_attr='epoch',
             reward_attr='accuracy',
             max_reward=args.max_reward,
-            dist_ip_addrs = ext_ips
+            #dist_ip_addrs = ext_ips
         )   # add the FIFO scheduler
     ]
 
     # define the scheduler run time list
     scheduler_runtimes = []
 
-    # run the task with each scheduler
-    for scheduler in schedulers:
+    #switch case for choice of scheduler
+    def scheduler_choice(argument):
+        switcher = {
+            0: schedulers[0],
+            1: schedulers[1],
+            2: schedulers[2],
+        }
+        return switcher.get(argument)
+    # run the task with selected scheduler
+    print('')
+    scheduler = scheduler_choice(args.choice)
+    # display the scheduler and available resources
+    print(scheduler)
+    print('')
 
-        # display the scheduler and available resources
-        print('')
-        print(scheduler)
-        print('')
+    # start the clock
+    start_time = datetime.now()
 
-        # start the clock
-        start_time = datetime.now()
+    # run the job with the scheduler
+    scheduler.run()
+    scheduler.join_jobs()
 
-        # run the job with the scheduler
-        scheduler.run()
-        scheduler.join_jobs()
-
-        # stop the clock
-        stop_time = datetime.now()
-        scheduler_runtimes.append([(stop_time - start_time).total_seconds(), scheduler.get_best_reward()])
+    # stop the clock
+    stop_time = datetime.now()
+    scheduler_runtimes.append([(stop_time - start_time).total_seconds(), scheduler.get_best_reward()])
 
     run_times.append(scheduler_runtimes)
 
