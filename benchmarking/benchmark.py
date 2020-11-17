@@ -10,6 +10,7 @@ import torchvision.transforms as transforms
 from tqdm.auto import tqdm
 import argparse
 from datetime import datetime
+import logging
 
 
 parser = argparse.ArgumentParser()
@@ -201,6 +202,7 @@ tasks = [
 # define run time table
 run_times = []
 
+#get external ips
 ext_ips = open('ips', 'r').read().split('\n')
 print(ext_ips)
 # Run every task with all available schedulers
@@ -259,16 +261,17 @@ for task in tasks:
     print('')
 
     # start the clock
-    start_time = datetime.now()
+    start_time = datetime.utcnow()
 
     # run the job with the scheduler
     scheduler.run()
     scheduler.join_jobs()
 
     # stop the clock
-    stop_time = datetime.now()
+    stop_time = datetime.utcnow()
     scheduler_runtimes.append([(stop_time - start_time).total_seconds(), scheduler.get_best_reward()])
-
+    with open('autogluon_scheduler.log', 'a') as log:
+        print(args.scheduler,start_time,stop_time, file=log)
     run_times.append(scheduler_runtimes)
 
 print(run_times)
