@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--num_cpus', default=4, type=int, help='number of CPUs to use')
 parser.add_argument('--num_gpus', default=0, type=int, help='number of GPUs to use')
 parser.add_argument('--max_reward', default=90, type=int, help='convergence criterion')
-parser.add_argument('--ip', default=None, help='additional ips to be added')
+parser.add_argument('--ip', default='ext_ips', help='additional ips to be added')
 parser.add_argument('--scheduler', type=str, default='fifo', help='scheduler name (default: fifo)')
 
 args = parser.parse_args()
@@ -202,50 +202,85 @@ tasks = [
 # define run time table
 run_times = []
 
-#get external ips
-ext_ips = open('ips', 'r').read().split('\n')
-print(ext_ips)
+# get external ips
+ext_ips = open(args.ip, 'r').read().split('\n')
+
+
 # Run every task with all available schedulers
 for task in tasks:
 
     # define all schedulers
-    schedulers = [
-        ag.scheduler.FIFOScheduler(
-            task,
-            resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
-            time_attr='epoch',
-            reward_attr='accuracy',
-            time_out = math.inf,
-            max_reward=args.max_reward,
-            #dist_ip_addrs=ext_ips
-        ),  # add the FIFO scheduler
+    if ext_ips[0] == '':
+        schedulers = [
+            ag.scheduler.FIFOScheduler(
+                task,
+                resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
+                time_attr='epoch',
+                reward_attr='accuracy',
+                time_out=math.inf,
+                max_reward=args.max_reward,
+                # dist_ip_addrs=ext_ips
+            ),  # add the FIFO scheduler
 
-        ag.scheduler.HyperbandScheduler(
-            task,
-            resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
-            time_attr='epoch',
-            reward_attr='accuracy',
-            time_out=math.inf,
-            max_reward=args.max_reward,
-            #dist_ip_addrs=ext_ips
-        ),  # add the Hyperband scheduler
+            ag.scheduler.HyperbandScheduler(
+                task,
+                resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
+                time_attr='epoch',
+                reward_attr='accuracy',
+                time_out=math.inf,
+                max_reward=args.max_reward,
+                # dist_ip_addrs=ext_ips
+            ),  # add the Hyperband scheduler
 
-        ag.scheduler.RLScheduler(
-            task,
-            resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
-            num_trials= 10000,
-            time_out = math.inf,
-            time_attr='epoch',
-            reward_attr='accuracy',
-            max_reward=args.max_reward,
-            #dist_ip_addrs = ext_ips
-        )   # add the FIFO scheduler
-    ]
+            ag.scheduler.RLScheduler(
+                task,
+                resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
+                num_trials=10000,
+                time_out=math.inf,
+                time_attr='epoch',
+                reward_attr='accuracy',
+                max_reward=args.max_reward,
+                # dist_ip_addrs = ext_ips
+            )  # add the FIFO scheduler
+        ]
+    else:
+        schedulers = [
+            ag.scheduler.FIFOScheduler(
+                task,
+                resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
+                time_attr='epoch',
+                reward_attr='accuracy',
+                time_out=math.inf,
+                max_reward=args.max_reward,
+                dist_ip_addrs=ext_ips
+            ),  # add the FIFO scheduler
+
+            ag.scheduler.HyperbandScheduler(
+                task,
+                resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
+                time_attr='epoch',
+                reward_attr='accuracy',
+                time_out=math.inf,
+                max_reward=args.max_reward,
+                dist_ip_addrs=ext_ips
+            ),  # add the Hyperband scheduler
+
+            ag.scheduler.RLScheduler(
+                task,
+                resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
+                num_trials=10000,
+                time_out=math.inf,
+                time_attr='epoch',
+                reward_attr='accuracy',
+                max_reward=args.max_reward,
+                dist_ip_addrs = ext_ips
+            )  # add the FIFO scheduler
+        ]
 
     # define the scheduler run time list
     scheduler_runtimes = []
 
-    #switch case for choice of scheduler
+    # switch case for choice of scheduler
     def scheduler_choice(argument):
         switcher = {
             'fifo': schedulers[0],
@@ -253,6 +288,7 @@ for task in tasks:
             'rl': schedulers[2],
         }
         return switcher.get(argument)
+
     # run the task with selected scheduler
     print('')
     scheduler = scheduler_choice(args.scheduler)
