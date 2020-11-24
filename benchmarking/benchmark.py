@@ -298,7 +298,7 @@ for task in tasks:
         scheduler_runtimes.append([(stop_time - start_time).total_seconds(), scheduler.get_best_reward()])
 
         # publish to log
-        with open('autogluon_scheduler.log', 'a') as log:
+        with open('autogluon_scheduler.log', 'w') as log:
             print(scheduler.__class__.__name__, start_time, stop_time, file=log)
 
         # pause for a bit,before the next scheduler
