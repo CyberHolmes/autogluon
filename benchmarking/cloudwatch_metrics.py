@@ -50,6 +50,7 @@ with open('autogluon_scheduler.log', 'r') as log:
         # print(response['Datapoints'])
 
         cwd = os.getcwd()
+        cwd = os.path.join(cwd,"Resource_utilization")
         # print(cwd)
         cwd = os.path.join(cwd, word[0])
         # os.mkdir(cwd)
@@ -59,11 +60,11 @@ with open('autogluon_scheduler.log', 'r') as log:
         with open(os.path.join(cwd,"Machine1.csv"), 'w') as csv_file:
             writer = csv.writer(csv_file)
             for datapoint in Datapoints1:
-                writer.writerow([word[1], datapoint['Timestamp'], datapoint['Average']])
+                writer.writerow([datapoint['Timestamp'], datapoint['Average']])
         with open(os.path.join(cwd,"Machine2.csv"), 'w') as csv_file:
             writer = csv.writer(csv_file)
             for datapoint in Datapoints2:
-                writer.writerow([word[1], datapoint['Timestamp'], datapoint['Average']])
+                writer.writerow([datapoint['Timestamp'], datapoint['Average']])
 
 # os.path.join()
 # name_of_file = raw_input("What is the name of the file: ")
