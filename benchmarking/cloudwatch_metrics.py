@@ -33,10 +33,12 @@ with open('autogluon_scheduler.log', 'r') as log:
         Datapoints = response['Datapoints']
 
         print(response['Datapoints'])
-        with open('dict.csv', 'w') as csv_file:
+        with open('dict.csv', 'a') as csv_file:
             writer = csv.writer(csv_file)
             for datapoint in Datapoints:
-                writer.writerow([datapoint['Timestamp'], datapoint['Average']])
+                writer.writerow([word[0],datapoint['Timestamp'], datapoint['Average']])
 
-
+with open('dict,csv', 'r') as lines:
+    for line in lines:
+        word = line.split()
 
