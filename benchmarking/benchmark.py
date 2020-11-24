@@ -302,6 +302,6 @@ for task in tasks:
             print(scheduler.__class__.__name__, start_time, stop_time, file=log)
 
         # pause for a bit,before the next scheduler
-        time.sleep(30)
+        time.sleep(120)
 
 print(scheduler_runtimes)
