@@ -10,6 +10,7 @@ import torchvision.transforms as transforms
 from tqdm.auto import tqdm
 import argparse
 from datetime import datetime
+import time
 import logging
 
 
@@ -19,7 +20,6 @@ parser.add_argument('--num_cpus', default=4, type=int, help='number of CPUs to u
 parser.add_argument('--num_gpus', default=0, type=int, help='number of GPUs to use')
 parser.add_argument('--max_reward', default=90, type=int, help='convergence criterion')
 parser.add_argument('--ip', default='ext_ips', help='additional ips to be added')
-parser.add_argument('--scheduler', type=str, default='fifo', help='scheduler name (default: fifo)')
 
 args = parser.parse_args()
 
@@ -212,14 +212,13 @@ for task in tasks:
     # define all schedulers
     if ext_ips[0] == '':
         schedulers = [
-            ag.scheduler.FIFOScheduler(
+            ag.scheduler.OptimusScheduler(
                 task,
                 resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
                 time_attr='epoch',
                 reward_attr='accuracy',
                 time_out=math.inf,
-                max_reward=args.max_reward,
-                # dist_ip_addrs=ext_ips
+                max_reward=args.max_reward
             ),  # add the FIFO scheduler
 
             ag.scheduler.HyperbandScheduler(
@@ -228,8 +227,7 @@ for task in tasks:
                 time_attr='epoch',
                 reward_attr='accuracy',
                 time_out=math.inf,
-                max_reward=args.max_reward,
-                # dist_ip_addrs=ext_ips
+                max_reward=args.max_reward
             ),  # add the Hyperband scheduler
 
             ag.scheduler.RLScheduler(
@@ -239,13 +237,12 @@ for task in tasks:
                 time_out=math.inf,
                 time_attr='epoch',
                 reward_attr='accuracy',
-                max_reward=args.max_reward,
-                # dist_ip_addrs = ext_ips
+                max_reward=args.max_reward
             )  # add the FIFO scheduler
         ]
     else:
         schedulers = [
-            ag.scheduler.FIFOScheduler(
+            ag.scheduler.OptimusScheduler(
                 task,
                 resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
                 time_attr='epoch',
@@ -280,34 +277,31 @@ for task in tasks:
     # define the scheduler run time list
     scheduler_runtimes = []
 
-    # switch case for choice of scheduler
-    def scheduler_choice(argument):
-        switcher = {
-            'fifo': schedulers[0],
-            'hyperband': schedulers[1],
-            'rl': schedulers[2],
-        }
-        return switcher.get(argument)
+    for scheduler in schedulers:
+        # run the task with selected scheduler
+        # display the scheduler and available resources
+        print('')
+        print(scheduler)
+        print('')
 
-    # run the task with selected scheduler
-    print('')
-    scheduler = scheduler_choice(args.scheduler)
-    # display the scheduler and available resources
-    print(scheduler)
-    print('')
+        # start the clock
+        start_time = datetime.utcnow()
 
-    # start the clock
-    start_time = datetime.utcnow()
+        # run the job with the scheduler
+        scheduler.run()
+        scheduler.join_jobs()
 
-    # run the job with the scheduler
-    scheduler.run()
-    scheduler.join_jobs()
+        # stop the clock
+        stop_time = datetime.utcnow()
 
-    # stop the clock
-    stop_time = datetime.utcnow()
-    scheduler_runtimes.append([(stop_time - start_time).total_seconds(), scheduler.get_best_reward()])
-    with open('autogluon_scheduler.log', 'a') as log:
-        print(args.scheduler,start_time,stop_time, file=log)
-    run_times.append(scheduler_runtimes)
+        # append to run times
+        scheduler_runtimes.append([(stop_time - start_time).total_seconds(), scheduler.get_best_reward()])
 
-print(run_times)
+        # publish to log
+        with open('autogluon_scheduler.log', 'a') as log:
+            print(scheduler.__class__.__name__, start_time, stop_time, file=log)
+
+        # pause for a bit,before the next scheduler
+        time.sleep(30)
+
+print(scheduler_runtimes)
