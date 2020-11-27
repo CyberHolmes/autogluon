@@ -275,6 +275,8 @@ for task in tasks:
 
     # define the scheduler run time list
     scheduler_runtimes = []
+    with open('autogluon_scheduler.log', 'w') as log:
+        print('')
 
     for scheduler in schedulers:
         # run the task with selected scheduler
