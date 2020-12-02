@@ -16,28 +16,28 @@ import logging
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--num_cpus', default=4, type=int, help='number of CPUs to use')
+parser.add_argument('--num_cpus', default=1, type=int, help='number of CPUs to use')
 parser.add_argument('--num_gpus', default=0, type=int, help='number of GPUs to use')
-parser.add_argument('--max_reward', default=90, type=int, help='convergence criterion')
+parser.add_argument('--max_reward', default=60, type=int, help='convergence criterion')
 parser.add_argument('--ip', default='ext_ips', help='additional ips to be added')
 
 args = parser.parse_args()
 
 
 class ConvNet(nn.Module):
-    def __init__(self, hidden_conv, hidden_fc):
+    def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(1, hidden_conv, 5)
+        self.conv1 = nn.Conv2d(3, 6, 5)
         self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(hidden_conv, 16, 5)
-        self.fc1 = nn.Linear(16 * 4 * 4, hidden_fc)
-        self.fc2 = nn.Linear(hidden_fc, 84)
+        self.conv2 = nn.Conv2d(6, 16, 5)
+        self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 10)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 4 * 4)
+        x = x.view(-1, 16 * 5 * 5)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -50,33 +50,30 @@ def get_data_loaders(batch_size):
 
     Returns the train and test data loaders
     """
+    transform = transforms.Compose(
+        [transforms.ToTensor(),
+         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-    # transforms the the dataset
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
-    ])
-
-    # load the datasets
-    train_data = torchvision.datasets.MNIST(
+    train_data = torchvision.datasets.CIFAR10(
         root='./data',
         train=True,
-        download=True,
-        transform=transform
-    )
-    test_data = torchvision.datasets.MNIST(
-        root='./data',
-        train=False,
-        download=True,
+        download=False,
         transform=transform
     )
 
-    # create the data loaders
+    test_data = torchvision.datasets.CIFAR10(
+        root='./data',
+        train=False,
+        download=False,
+        transform=transform
+    )
+
     train_data = torch.utils.data.DataLoader(
         train_data,
         batch_size=batch_size,
         shuffle=False
     )
+
     test_data = torch.utils.data.DataLoader(
         test_data,
         batch_size=batch_size,
@@ -90,10 +87,6 @@ def get_data_loaders(batch_size):
 @ag.args(
     lr=ag.space.Categorical(0.01, 0.02),
     wd=ag.space.Categorical(1e-4, 5e-4),
-    epochs=ag.space.Categorical(5, 6),
-    hidden_conv=ag.space.Categorical(6, 7),
-    hidden_fc=ag.space.Categorical(80, 120),
-    batch_size=ag.space.Categorical(16, 32, 64, 128)
 )
 def train_image_classification(args, reporter):
     """
@@ -105,9 +98,9 @@ def train_image_classification(args, reporter):
     # get variables from args
     lr = args.lr
     wd = args.wd
-    epochs = args.epochs
-    batch_size = args.batch_size
-    model = ConvNet(args.hidden_conv, args.hidden_fc)
+    epochs = 5
+    batch_size = 16
+    model = ConvNet()
 
     # get the data loaders
     train_loader, test_loader = get_data_loaders(batch_size)
@@ -183,7 +176,6 @@ def train_image_classification(args, reporter):
 
         # calculate the accuracy
         acc = 100. * correct / total
-
         # report the accuracy and the parameters used
         reporter(epoch=epoch, accuracy=acc, lr=lr, wd=wd, batch_size=batch_size)
 
@@ -211,33 +203,66 @@ for task in tasks:
     # define all schedulers
     if ext_ips[0] == '':
         schedulers = [
-            ag.scheduler.OptimusScheduler(
+            # ag.scheduler.OptimusScheduler(
+            #     task,
+            #     resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
+            #     time_attr='epoch',
+            #     reward_attr='accuracy',
+            #     time_out=math.inf,
+            #     max_reward=args.max_reward
+            # ),  # add the FIFO scheduler
+            #
+            # ag.scheduler.HyperbandScheduler(
+            #     task,
+            #     resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
+            #     time_attr='epoch',
+            #     reward_attr='accuracy',
+            #     time_out=math.inf,
+            #     max_reward=args.max_reward
+            # ),  # add the Hyperband scheduler
+            ag.scheduler.RLScheduler(
                 task,
                 resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
+                num_trials=10,
+                time_out=math.inf,
                 time_attr='epoch',
                 reward_attr='accuracy',
-                time_out=math.inf,
-                max_reward=args.max_reward
+                max_reward=args.max_reward,
+                controller='atten'
             ),  # add the FIFO scheduler
-
-            ag.scheduler.HyperbandScheduler(
-                task,
-                resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
-                time_attr='epoch',
-                reward_attr='accuracy',
-                time_out=math.inf,
-                max_reward=args.max_reward
-            ),  # add the Hyperband scheduler
 
             ag.scheduler.RLScheduler(
                 task,
                 resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
-                num_trials=10000,
+                num_trials=10,
                 time_out=math.inf,
                 time_attr='epoch',
                 reward_attr='accuracy',
-                max_reward=args.max_reward
-            )  # add the FIFO scheduler
+                max_reward=args.max_reward,
+                controller='gru'
+            ),  # add the FIFO scheduler
+
+            ag.scheduler.RLScheduler(
+                task,
+                resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
+                num_trials=10,
+                time_out=math.inf,
+                time_attr='epoch',
+                reward_attr='accuracy',
+                max_reward=args.max_reward,
+                controller='lstm'
+            ),  # add the FIFO scheduler
+
+            ag.scheduler.RLScheduler(
+                task,
+                resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
+                num_trials=10,
+                time_out=math.inf,
+                time_attr='epoch',
+                reward_attr='accuracy',
+                max_reward=args.max_reward,
+                controller='alpha'
+            ),  # add the FIFO scheduler
         ]
     else:
         schedulers = [
@@ -303,6 +328,6 @@ for task in tasks:
             print(task.__name__,scheduler.__class__.__name__, start_time, stop_time, file=log)
 
         # pause for a bit,before the next scheduler
-        time.sleep(120)
+        #time.sleep(120)
 
 print(scheduler_runtimes)

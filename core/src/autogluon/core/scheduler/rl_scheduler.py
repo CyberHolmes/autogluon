@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 _ARGUMENT_KEYS = {
     'controller_lr', 'ema_baseline_decay', 'controller_resource',
-    'controller_batch_size', 'sync'}
+    'controller_batch_size', 'sync', 'controller'}
 
 _DEFAULT_OPTIONS = {
     'resume': False,
@@ -116,7 +116,7 @@ class RLScheduler(FIFOScheduler):
             if searcher is not None:
                 logger.warning("Argument 'searcher' must be of type RLSearcher. Ignoring 'searcher' and creating searcher here.")
             kwargs['searcher'] = RLSearcher(
-                train_fn.kwspaces, reward_attribute=kwargs['reward_attr'])
+                train_fn.kwspaces, reward_attribute=kwargs['reward_attr'], controller_type=kwargs['controller'])
         # Pass resume=False here. Resume needs members of this object to be
         # created
         kwargs['resume'] = False

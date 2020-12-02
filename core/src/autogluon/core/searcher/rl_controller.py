@@ -32,7 +32,7 @@ class RLSearcher(BaseSearcher):
         import mxnet as mx
         # We assume that if MXNet is installed, we also have autogluon.mxnet
         from autogluon.mxnet.scheduler.rl_scheduler import LSTMController, \
-            AlphaController, AttenController
+            AlphaController, AttenController, GRUController
 
         super().__init__(
             configspace=None, reward_attribute=kwargs.get('reward_attribute'))
@@ -45,6 +45,8 @@ class RLSearcher(BaseSearcher):
             self.controller = AlphaController(kwspaces, ctx=ctx, **kwargs)
         elif controller_type == 'atten':
             self.controller = AttenController(kwspaces, ctx=ctx, **kwargs)
+        elif controller_type == 'gru':
+            self.controller = GRUController(kwspaces, ctx=ctx, **kwargs)
         else:
             raise NotImplementedError
         self.controller.initialize(ctx=ctx)

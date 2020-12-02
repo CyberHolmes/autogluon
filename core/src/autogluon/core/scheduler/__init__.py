@@ -6,4 +6,3 @@ from .scheduler import *
 from .fifo import *
 from .hyperband import *
 from .rl_scheduler import *
-from .optimus import *

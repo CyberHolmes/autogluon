@@ -12,6 +12,7 @@ class BaseController(mx.gluon.Block):
     BaseController subclasses are used in RLSearcher, which is the searcher
     for RLScheduler.
     """
+
     def __init__(self, prefetch=4, num_workers=4, timeout=20, **kwargs):
         super().__init__()
         # manager = multiprocessing.Manager()
@@ -336,6 +337,127 @@ class AlphaController(BaseController):
             actions.append(action[:, 0])
             entropies.append(entropy)
             log_probs.append(selected_log_prob)
+
+        configs = []
+        for idx in range(batch_size):
+            config = {}
+            for i, action in enumerate(actions):
+                choice = action[idx].asscalar()
+                k, space = self.spaces[i]
+                config[k] = int(choice)
+            configs.append(config)
+
+        if with_details:
+            entropies = mx.nd.stack(*entropies, axis=1) if with_entropy else entropies
+            return configs, mx.nd.stack(*log_probs, axis=1), entropies
+        else:
+            return configs
+
+
+class GRUController(BaseController):
+    def __init__(self, kwspaces, softmax_temperature=1.0, hidden_size=100,
+                 ctx=mx.cpu(), **kwargs):
+        super().__init__(**kwargs)
+        self.softmax_temperature = softmax_temperature
+        self.spaces = list(kwspaces.items())
+        self.hidden_size = hidden_size
+        self.context = ctx
+
+        # only support Categorical space for now
+        self.num_tokens = []
+        for _, space in self.spaces:
+            assert isinstance(space, Categorical)
+            self.num_tokens.append(len(space))
+        num_total_tokens = sum(self.num_tokens)
+
+        # controller lstm
+        self.encoder = nn.Embedding(num_total_tokens, hidden_size)
+        self.gru = mx.gluon.rnn.GRUCell(input_size=hidden_size, hidden_size=hidden_size)
+        self.decoders = nn.Sequential()
+        for idx, size in enumerate(self.num_tokens):
+            decoder = nn.Dense(in_units=hidden_size, units=size)
+            self.decoders.add(decoder)
+
+        def _init_hidden(batch_size):
+            zeros = mx.nd.zeros((batch_size, hidden_size), ctx=self.context)
+            return zeros
+
+        def _get_default_hidden(key):
+            return mx.nd.zeros((key, hidden_size), ctx=self.context)
+
+        self.static_init_hidden = keydefaultdict(_init_hidden)
+        self.static_inputs = keydefaultdict(_get_default_hidden)
+
+    def forward(self, inputs, hidden, block_idx, is_embed):
+        if not is_embed:
+            embed = self.encoder(inputs)
+        else:
+            embed = inputs
+
+        embed = mx.nd.expand_dims(embed, axis=0)
+        hidden = mx.nd.expand_dims(hidden, axis=0)
+
+        _, hx = self.gru(embed, hidden)
+
+        logits = self.decoders[block_idx](hx[0])
+        logits = logits / self.softmax_temperature
+
+        return logits, hx[0]
+
+    def inference(self):
+        inputs = self.static_inputs[1]
+        hidden = self.static_init_hidden[1]
+        actions = []
+        for block_idx in range(len(self.num_tokens)):
+            logits, hidden = self.forward(inputs, hidden,
+                                          block_idx, is_embed=(block_idx == 0))
+            probs = mx.nd.softmax(logits, axis=-1)
+            action = mx.nd.argmax(probs, 1)
+            actions.append(action)
+            inputs = action + sum(self.num_tokens[:block_idx])
+            inputs.detach()
+
+        config = {}
+        for i, action in enumerate(actions):
+            choice = action.asscalar()
+            k, space = self.spaces[i]
+            config[k] = int(choice)
+
+        return config
+
+    def sample(self, batch_size=1, with_details=False, with_entropy=False):
+        """
+        Returns
+        -------
+        configs : list of dict
+            list of configurations
+        """
+        inputs = self.static_inputs[batch_size]
+        hidden = self.static_init_hidden[batch_size]
+
+        actions = []
+        entropies = []
+        log_probs = []
+
+        for idx in range(len(self.num_tokens)):
+            logits, hidden = self.forward(inputs, hidden,
+                                          idx, is_embed=(idx == 0))
+
+            probs = mx.nd.softmax(logits, axis=-1)
+            log_prob = mx.nd.log_softmax(logits, axis=-1)
+            entropy = -(log_prob * probs).sum(1, keepdims=False) if with_entropy else None
+
+            action = mx.random.multinomial(probs, 1)
+            ind = mx.nd.stack(mx.nd.arange(probs.shape[0], ctx=action.context),
+                              action.astype('float32'))
+            selected_log_prob = mx.nd.gather_nd(log_prob, ind)
+
+            actions.append(action[:, 0])
+            entropies.append(entropy)
+            log_probs.append(selected_log_prob)
+
+            inputs = action[:, 0] + sum(self.num_tokens[:idx])
+            inputs.detach()
 
         configs = []
         for idx in range(batch_size):
