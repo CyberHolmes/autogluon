@@ -1,8 +1,8 @@
-import argparse
 import math
-
-import torchtext
 import yaml
+import time
+import torchtext
+import argparse
 
 import autogluon.core as ag
 import pandas as pd
@@ -494,6 +494,9 @@ if __name__ == "__main__":
                     'num_machines': num_machines,
                     'experiment': experiment
                 }, ignore_index=True)
+
+                # sleep for 2 mins to help with cloudwatch
+                time.sleep(120)
 
     # save the experiment details
     results.to_csv(args.out)
