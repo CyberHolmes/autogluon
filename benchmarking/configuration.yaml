@@ -1,0 +1,39 @@
+tasks:
+  train_image_classification:
+    parameters:
+      lr:
+        - 0.01
+        - 0.02
+        - 0.04
+        - 0.08
+        - 0.16
+      wd:
+        - 0.0001
+        - 0.0002
+        - 0.0004
+        - 0.0008
+        - 0.0016
+    reward_attr: accuracy
+    max_reward: 55
+  train_text_translation:
+    parameters:
+      nlayers:
+        - 1
+        - 2
+        - 3
+      nhead:
+        - 1
+        - 2
+      dropout:
+        - 0.1
+        - 0.2
+        - 0.3
+      lr:
+        - 4.0
+        - 5.0
+        - 6.0
+    reward_attr: perplexity
+    max_reward: -249
+dist_ips:
+num_cpus: 8
+num_gpus: 1
