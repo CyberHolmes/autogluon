@@ -388,21 +388,21 @@ def create_tasks(config):
     return task_list, search_space
 
 
-# define all the searchers
-searchers = [
-    'random',
-    'skopt',
-    'grid',
-    'bayesopt'
+# define all the controllers
+controllers = [
+    'lstm',
+    'alpha',
+    'atten',
+    'gru'
 ]
 
-
-def create_schedulers(task, config):
+def create_schedulers(task, config, search_space):
     """
     creates the schedulers for the task using the config
 
     task, task to schedule
     config, configuration file
+    search_space, search space size
     """
 
     with open(config) as file:
@@ -416,22 +416,23 @@ def create_schedulers(task, config):
 
     schedulers = []
 
-    for searcher in searchers:
+    for controller in controllers:
 
-        scheduler_config = {
-            'resource': {'num_cpus': num_cpus, 'num_gpus': num_gpus},
-            'time_attr': 'epoch',
-            'reward_attr': reward_attr,
-            'time_out': math.inf,
-            'max_reward': max_reward,
-            'searcher': searcher
-        }
+            scheduler_config = {
+                'resource': {'num_cpus': num_cpus, 'num_gpus': num_gpus},
+                'time_attr': 'epoch',
+                'reward_attr': reward_attr,
+                'time_out': math.inf,
+                'num_trials': search_space,
+                'max_reward': max_reward,
+                'controller': controller
+            }
 
-        if dist_ips:
-            scheduler_config['dist_ip_addrs'] = dist_ips
+            if dist_ips:
+                scheduler_config['dist_ip_addrs'] = dist_ips
 
-        scheduler = ag.scheduler.FIFOScheduler(task, **scheduler_config)
-        schedulers.append(scheduler)
+            scheduler = ag.scheduler.RLScheduler(task, **scheduler_config)
+            schedulers.append(scheduler)
 
     return schedulers
 
@@ -441,16 +442,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--conf', default='configuration.yaml', help='configuration file')
-    parser.add_argument('--out', default='output/jct/fifo_benchmark.csv', help='output file')
+    parser.add_argument('--out', default='output/jct/rl_benchmark.csv', help='output file')
     parser.add_argument('-bootstrap', default=1, help='Number of times the experiment has been run')
 
     args = parser.parse_args()
 
     # create all the tasks
-    tasks, search_spaces = create_tasks(args.conf)
+    tasks, search_space = create_tasks(args.conf)
 
-    # shuffle the order of the searcher
-    random.shuffle(searchers)
+    # set the seed
+    seed = random.random()
+
+    # shuffle the order of the controllers
+    random.shuffle(controllers)
 
     with open(args.conf) as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
@@ -464,7 +468,8 @@ if __name__ == "__main__":
     # create the results dataframe
     results = pd.DataFrame({
         'task': [],
-        'searcher': [],
+        'controller': [],
+        'sync': [],
         'runtime': [],
         'accuracy': [],
         'start_time': [],
@@ -479,7 +484,7 @@ if __name__ == "__main__":
         # schedule each task
         for tdx, task in enumerate(tasks):
             # experiment with different configurations of scheduler
-            schedulers = create_schedulers(task, args.conf)
+            schedulers = create_schedulers(task, args.conf, search_space[tdx])
             # run the task with every scheduler
             for idx, scheduler in enumerate(schedulers):
                 # start the clock
@@ -495,14 +500,14 @@ if __name__ == "__main__":
                 # add the experiment details to the results
                 results = results.append({
                     'task': task.__name__,
-                    'searcher': searchers[idx],
+                    'controller': scheduler.controller_type,
                     'runtime': (stop_time - start_time).total_seconds(),
                     'accuracy': scheduler.get_best_reward(),
                     'start_time': start_time,
                     'end_time': stop_time,
                     'num_machines': num_machines,
                     'experiment': experiment + 1,
-                    'search_space_size': search_spaces[tdx]
+                    'search_space_size': search_space[tdx]
                 }, ignore_index=True)
 
                 # sleep for 2 mins to help with cloudwatch
