@@ -396,6 +396,7 @@ controllers = [
     'gru'
 ]
 
+
 def create_schedulers(task, config, search_space):
     """
     creates the schedulers for the task using the config
@@ -418,21 +419,21 @@ def create_schedulers(task, config, search_space):
 
     for controller in controllers:
 
-            scheduler_config = {
-                'resource': {'num_cpus': num_cpus, 'num_gpus': num_gpus},
-                'time_attr': 'epoch',
-                'reward_attr': reward_attr,
-                'time_out': math.inf,
-                'num_trials': search_space,
-                'max_reward': max_reward,
-                'controller': controller
-            }
+        scheduler_config = {
+            'resource': {'num_cpus': num_cpus, 'num_gpus': num_gpus},
+            'time_attr': 'epoch',
+            'reward_attr': reward_attr,
+            'time_out': math.inf,
+            'num_trials': search_space,
+            'max_reward': max_reward,
+            'controller': controller
+        }
 
-            if dist_ips:
-                scheduler_config['dist_ip_addrs'] = dist_ips
+        if dist_ips:
+            scheduler_config['dist_ip_addrs'] = dist_ips
 
-            scheduler = ag.scheduler.RLScheduler(task, **scheduler_config)
-            schedulers.append(scheduler)
+        scheduler = ag.scheduler.RLScheduler(task, **scheduler_config)
+        schedulers.append(scheduler)
 
     return schedulers
 
