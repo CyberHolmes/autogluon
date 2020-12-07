@@ -505,8 +505,8 @@ if __name__ == "__main__":
                     'search_space_size': search_spaces[tdx]
                 }, ignore_index=True)
 
+                # save the experiment details
+                results.to_csv(args.out)
+
                 # sleep for 2 mins to help with cloudwatch
                 time.sleep(120)
-
-    # save the experiment details
-    results.to_csv(args.out)

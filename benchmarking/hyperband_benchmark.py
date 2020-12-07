@@ -388,13 +388,20 @@ def create_tasks(config):
     return task_list, search_space
 
 
-# define all the controllers
-controllers = [
-    'lstm',
-    'alpha',
-    'atten',
-    'gru'
+# define all the brackets and reduction factors
+brackets = [
+    1,
+    2,
+    3,
+    4
 ]
+reduction_factors = [
+    2,
+    4,
+    8,
+    10
+]
+
 
 
 def create_schedulers(task, config, search_space):
@@ -417,23 +424,25 @@ def create_schedulers(task, config, search_space):
 
     schedulers = []
 
-    for controller in controllers:
+    for bracket in brackets:
+        for reduction_factor in reduction_factors:
 
-        scheduler_config = {
-            'resource': {'num_cpus': num_cpus, 'num_gpus': num_gpus},
-            'time_attr': 'epoch',
-            'reward_attr': reward_attr,
-            'time_out': math.inf,
-            'num_trials': search_space,
-            'max_reward': max_reward,
-            'controller': controller
-        }
+            scheduler_config = {
+                'resource': {'num_cpus': num_cpus, 'num_gpus': num_gpus},
+                'time_attr': 'epoch',
+                'reward_attr': reward_attr,
+                'num_trials': search_space,
+                'max_t': 10,
+                'max_reward': max_reward,
+                'brackets': bracket ,
+                'reduction_factor' : reduction_factor,
+            }
 
-        if dist_ips:
-            scheduler_config['dist_ip_addrs'] = dist_ips
+            if dist_ips:
+                scheduler_config['dist_ip_addrs'] = dist_ips
 
-        scheduler = ag.scheduler.RLScheduler(task, **scheduler_config)
-        schedulers.append(scheduler)
+            scheduler = ag.scheduler.HyperbandScheduler(task, **scheduler_config)
+            schedulers.append(scheduler)
 
     return schedulers
 
@@ -443,7 +452,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--conf', default='configuration.yaml', help='configuration file')
-    parser.add_argument('--out', default='output/jct/rl_benchmark.csv', help='output file')
+    parser.add_argument('--out', default='output/jct/hyperband_benchmark.csv', help='output file')
     parser.add_argument('-bootstrap', default=1, help='Number of times the experiment has been run')
 
     args = parser.parse_args()
@@ -454,8 +463,9 @@ if __name__ == "__main__":
     # set the seed
     seed = random.random()
 
-    # shuffle the order of the controllers
-    random.shuffle(controllers)
+    # shuffle the order of the brackets,reduction_factor
+    random.shuffle(brackets)
+    random.shuffle(reduction_factors)
 
     with open(args.conf) as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
@@ -469,7 +479,8 @@ if __name__ == "__main__":
     # create the results dataframe
     results = pd.DataFrame({
         'task': [],
-        'controller': [],
+        'bracket': [],
+        'reduction_factor': [],
         'sync': [],
         'runtime': [],
         'accuracy': [],
@@ -501,7 +512,8 @@ if __name__ == "__main__":
                 # add the experiment details to the results
                 results = results.append({
                     'task': task.__name__,
-                    'controller': scheduler.controller_type,
+                    'bracket': scheduler.br,
+                    'reduction_factor': scheduler.rf,
                     'runtime': (stop_time - start_time).total_seconds(),
                     'accuracy': scheduler.get_best_reward(),
                     'start_time': start_time,
@@ -516,3 +528,5 @@ if __name__ == "__main__":
 
                 # sleep for 2 mins to help with cloudwatch
                 time.sleep(120)
+
+

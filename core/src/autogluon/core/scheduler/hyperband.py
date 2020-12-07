@@ -318,6 +318,8 @@ class HyperbandScheduler(FIFOScheduler):
             rung_levels, grace_period=kwargs['grace_period'],
             reduction_factor=kwargs['reduction_factor'], max_t=max_t)
         brackets = kwargs['brackets']
+        self.br = brackets
+        self.rf = kwargs['reduction_factor']
         do_snapshots = kwargs['do_snapshots']
         assert (not do_snapshots) or (scheduler_type == 'stopping'), \
             "Snapshots are supported only for type = 'stopping'"
