@@ -35,5 +35,5 @@ tasks:
     reward_attr: perplexity
     max_reward: -249
 dist_ips:
-num_cpus: 8
-num_gpus: 1
+num_cpus: 4
+num_gpus: 0
