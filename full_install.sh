@@ -11,3 +11,4 @@ pip3 install -e extra/
 pip3 install -e text/
 pip3 install -e vision/
 pip3 install -e autogluon/
+mkdir -p benchmarking/output/jct
