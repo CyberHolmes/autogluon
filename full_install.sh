@@ -1,6 +1,6 @@
 sudo apt-get update
 sudo apt install python3-pip
-pip3 instaLL torch
+pip3 install torch
 pip3 install torchtext
 pip3 install torchvision
 pip3 install mxnet
