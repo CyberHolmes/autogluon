@@ -1,2 +1,0 @@
-,task,searcher,runtime,accuracy,start_time,end_time,num_machines,experiment
-0,train_text_translation,bayesopt,681.182565,-234.11834047346682,2020-12-03 03:57:35.374993,2020-12-03 04:08:56.557558,1.0,0.0

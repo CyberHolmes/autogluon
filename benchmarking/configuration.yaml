@@ -2,36 +2,33 @@ tasks:
   train_image_classification:
     parameters:
       lr:
-        - 0.01
-        - 0.02
-        - 0.04
-        - 0.08
-        - 0.16
+        min: 0.01
+        max: 0.16
+        type: float
       wd:
-        - 0.0001
-        - 0.0002
-        - 0.0004
-        - 0.0008
-        - 0.0016
+        min: 0.0001
+        max: 0.0016
+        type: float
     reward_attr: accuracy
     max_reward: 55
   train_text_translation:
     parameters:
       nlayers:
-        - 1
-        - 2
-        - 3
+        min: 1
+        max: 3
+        type: int
       nhead:
-        - 1
-        - 2
+        min: 1
+        max: 2
+        type: int
       dropout:
-        - 0.1
-        - 0.2
-        - 0.3
+        min: 0.1
+        max: 0.3
+        type: float
       lr:
-        - 4.0
-        - 5.0
-        - 6.0
+        min: 4.0
+        max: 6.0
+        type: float
     reward_attr: perplexity
     max_reward: -249
 dist_ips:

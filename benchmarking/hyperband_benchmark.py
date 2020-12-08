@@ -7,6 +7,7 @@ import argparse
 
 import autogluon.core as ag
 import pandas as pd
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -16,6 +17,8 @@ from torchtext.data import get_tokenizer
 
 from tqdm.auto import tqdm
 from datetime import datetime
+
+space_size = 2
 
 
 def generate_configuration_dict(config):
@@ -32,8 +35,15 @@ def generate_configuration_dict(config):
         configs = {}
         size = 1
         for parameter in config['tasks'][task]['parameters']:
-            configs[parameter] = ag.space.Categorical(*config['tasks'][task]['parameters'][parameter])
-            size = size * len(config['tasks'][task]['parameters'][parameter])
+            parameter_dict = config['tasks'][task]['parameters'][parameter]
+            min = parameter_dict['min']
+            max = parameter_dict['max']
+            if parameter_dict['type'] == 'float':
+                samples = np.linspace(min, max, num=space_size)
+            else:
+                samples = list(range(min, max + 1))
+            configs[parameter] = ag.space.Categorical(*samples)
+            size = size * len(samples)
         config_dict[task] = configs
         search_space_sizes.append(size)
 
@@ -392,16 +402,13 @@ def create_tasks(config):
 brackets = [
     1,
     2,
-    3,
     4
 ]
 reduction_factors = [
     2,
     4,
-    8,
-    10
+    8
 ]
-
 
 
 def create_schedulers(task, config, search_space):
@@ -434,8 +441,8 @@ def create_schedulers(task, config, search_space):
                 'num_trials': search_space,
                 'max_t': 10,
                 'max_reward': max_reward,
-                'brackets': bracket ,
-                'reduction_factor' : reduction_factor,
+                'brackets': bracket,
+                'reduction_factor': reduction_factor,
             }
 
             if dist_ips:
@@ -457,16 +464,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # create all the tasks
-    tasks, search_space = create_tasks(args.conf)
-
-    # set the seed
-    seed = random.random()
-
-    # shuffle the order of the brackets,reduction_factor
-    random.shuffle(brackets)
-    random.shuffle(reduction_factors)
-
     with open(args.conf) as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
 
@@ -481,7 +478,6 @@ if __name__ == "__main__":
         'task': [],
         'bracket': [],
         'reduction_factor': [],
-        'sync': [],
         'runtime': [],
         'accuracy': [],
         'start_time': [],
@@ -493,40 +489,47 @@ if __name__ == "__main__":
 
     # run the experiment multiple time
     for experiment in range(args.bootstrap):
-        # schedule each task
-        for tdx, task in enumerate(tasks):
-            # experiment with different configurations of scheduler
-            schedulers = create_schedulers(task, args.conf, search_space[tdx])
-            # run the task with every scheduler
-            for idx, scheduler in enumerate(schedulers):
-                # start the clock
-                start_time = datetime.utcnow()
+        # run the experiment for different search space sizes
+        for space_size in range(2, 10):
+            # create all the tasks
+            tasks, search_spaces = create_tasks(args.conf)
 
-                # run the job with the scheduler
-                scheduler.run()
-                scheduler.join_jobs()
+            # shuffle the order of the brackets,reduction_factor
+            random.shuffle(brackets)
+            random.shuffle(reduction_factors)
 
-                # stop the clock
-                stop_time = datetime.utcnow()
+            # schedule each task
+            for tdx, task in enumerate(tasks):
+                # experiment with different configurations of scheduler
+                schedulers = create_schedulers(task, args.conf, search_spaces[tdx])
+                # run the task with every scheduler
+                for idx, scheduler in enumerate(schedulers):
+                    # start the clock
+                    start_time = datetime.utcnow()
 
-                # add the experiment details to the results
-                results = results.append({
-                    'task': task.__name__,
-                    'bracket': scheduler.br,
-                    'reduction_factor': scheduler.rf,
-                    'runtime': (stop_time - start_time).total_seconds(),
-                    'accuracy': scheduler.get_best_reward(),
-                    'start_time': start_time,
-                    'end_time': stop_time,
-                    'num_machines': num_machines,
-                    'experiment': experiment + 1,
-                    'search_space_size': search_space[tdx]
-                }, ignore_index=True)
+                    # run the job with the scheduler
+                    scheduler.run()
+                    scheduler.join_jobs()
 
-                # save the experiment details
-                results.to_csv(args.out)
+                    # stop the clock
+                    stop_time = datetime.utcnow()
 
-                # sleep for 2 mins to help with cloudwatch
-                time.sleep(120)
+                    # add the experiment details to the results
+                    results = results.append({
+                        'task': task.__name__,
+                        'bracket': scheduler.br,
+                        'reduction_factor': scheduler.rf,
+                        'runtime': (stop_time - start_time).total_seconds(),
+                        'accuracy': scheduler.get_best_reward(),
+                        'start_time': start_time,
+                        'end_time': stop_time,
+                        'num_machines': num_machines,
+                        'experiment': experiment + 1,
+                        'search_space_size': search_spaces[tdx]
+                    }, ignore_index=True)
 
+                    # save the experiment details
+                    results.to_csv(args.out)
 
+                    # sleep for 2 mins to help with cloudwatch
+                    time.sleep(60)

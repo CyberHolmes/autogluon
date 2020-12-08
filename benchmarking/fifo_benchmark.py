@@ -13,9 +13,12 @@ import torch.nn.functional as F
 import torchvision
 import torchvision.transforms as transforms
 from torchtext.data import get_tokenizer
+import numpy as np
 
 from tqdm.auto import tqdm
 from datetime import datetime
+
+space_size = 2
 
 
 def generate_configuration_dict(config):
@@ -32,8 +35,15 @@ def generate_configuration_dict(config):
         configs = {}
         size = 1
         for parameter in config['tasks'][task]['parameters']:
-            configs[parameter] = ag.space.Categorical(*config['tasks'][task]['parameters'][parameter])
-            size = size * len(config['tasks'][task]['parameters'][parameter])
+            parameter_dict = config['tasks'][task]['parameters'][parameter]
+            min = parameter_dict['min']
+            max = parameter_dict['max']
+            if parameter_dict['type'] == 'float':
+                samples = np.linspace(min, max, num=space_size)
+            else:
+                samples = list(range(min, max + 1))
+            configs[parameter] = ag.space.Categorical(*samples)
+            size = size * len(samples)
         config_dict[task] = configs
         search_space_sizes.append(size)
 
@@ -392,12 +402,11 @@ def create_tasks(config):
 searchers = [
     'random',
     'skopt',
-    'grid',
     'bayesopt'
 ]
 
 
-def create_schedulers(task, config):
+def create_schedulers(task, config, search_space):
     """
     creates the schedulers for the task using the config
 
@@ -422,12 +431,13 @@ def create_schedulers(task, config):
             'resource': {'num_cpus': num_cpus, 'num_gpus': num_gpus},
             'time_attr': 'epoch',
             'reward_attr': reward_attr,
-            'time_out': math.inf,
+            'num_trials': search_space,
             'max_reward': max_reward,
-            'searcher': searcher
+            'searcher': searcher,
+            'time_out': math.inf
         }
 
-        if dist_ips:
+        if dist_ips and num_machines >= 1:
             scheduler_config['dist_ip_addrs'] = dist_ips
 
         scheduler = ag.scheduler.FIFOScheduler(task, **scheduler_config)
@@ -446,18 +456,12 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # create all the tasks
-    tasks, search_spaces = create_tasks(args.conf)
-
-    # shuffle the order of the searcher
-    random.shuffle(searchers)
-
     with open(args.conf) as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
 
     # count the number of machines
     if config['dist_ips']:
-        num_machines = len(config['dist_ips'])
+        num_machines = len(config['dist_ips']) + 1
     else:
         num_machines = 1
 
@@ -476,37 +480,45 @@ if __name__ == "__main__":
 
     # run the experiment multiple time
     for experiment in range(args.bootstrap):
-        # schedule each task
-        for tdx, task in enumerate(tasks):
-            # experiment with different configurations of scheduler
-            schedulers = create_schedulers(task, args.conf)
-            # run the task with every scheduler
-            for idx, scheduler in enumerate(schedulers):
-                # start the clock
-                start_time = datetime.utcnow()
+        # run the experiment for different search space sizes
+        for space_size in range(2, 10):
+            # create all the tasks
+            tasks, search_spaces = create_tasks(args.conf)
 
-                # run the job with the scheduler
-                scheduler.run()
-                scheduler.join_jobs()
+            # shuffle the order of the searcher
+            random.shuffle(searchers)
 
-                # stop the clock
-                stop_time = datetime.utcnow()
+            # schedule each task
+            for tdx, task in enumerate(tasks):
+                # experiment with different configurations of scheduler
+                schedulers = create_schedulers(task, args.conf, search_spaces[tdx])
+                # run the task with every scheduler
+                for idx, scheduler in enumerate(schedulers):
+                    # start the clock
+                    start_time = datetime.utcnow()
 
-                # add the experiment details to the results
-                results = results.append({
-                    'task': task.__name__,
-                    'searcher': searchers[idx],
-                    'runtime': (stop_time - start_time).total_seconds(),
-                    'accuracy': scheduler.get_best_reward(),
-                    'start_time': start_time,
-                    'end_time': stop_time,
-                    'num_machines': num_machines,
-                    'experiment': experiment + 1,
-                    'search_space_size': search_spaces[tdx]
-                }, ignore_index=True)
+                    # run the job with the scheduler
+                    scheduler.run()
+                    scheduler.join_jobs()
 
-                # save the experiment details
-                results.to_csv(args.out)
+                    # stop the clock
+                    stop_time = datetime.utcnow()
 
-                # sleep for 2 mins to help with cloudwatch
-                time.sleep(120)
+                    # add the experiment details to the results
+                    results = results.append({
+                        'task': task.__name__,
+                        'searcher': searchers[idx],
+                        'runtime': (stop_time - start_time).total_seconds(),
+                        'accuracy': scheduler.get_best_reward(),
+                        'start_time': start_time,
+                        'end_time': stop_time,
+                        'num_machines': num_machines,
+                        'experiment': experiment + 1,
+                        'search_space_size': search_spaces[tdx]
+                    }, ignore_index=True)
+
+                    # save the experiment details
+                    results.to_csv(args.out)
+
+                    # sleep for 1 min to help with cloudwatch
+                    time.sleep(60)

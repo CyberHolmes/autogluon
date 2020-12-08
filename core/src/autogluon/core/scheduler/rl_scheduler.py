@@ -110,6 +110,7 @@ class RLScheduler(FIFOScheduler):
 
         self.ema_baseline_decay = kwargs['ema_baseline_decay']
         self.sync = kwargs['sync']
+        self.controller_type = kwargs['controller']
         # create RL searcher if not passed
         searcher = kwargs.get('searcher')
         if not isinstance(searcher, RLSearcher):
