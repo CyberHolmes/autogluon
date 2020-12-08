@@ -437,7 +437,7 @@ def create_schedulers(task, config, search_space):
             'time_out': math.inf
         }
 
-        if dist_ips and num_machines >= 1:
+        if dist_ips:
             scheduler_config['dist_ip_addrs'] = dist_ips
 
         scheduler = ag.scheduler.FIFOScheduler(task, **scheduler_config)
