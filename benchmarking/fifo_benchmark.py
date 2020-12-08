@@ -438,7 +438,7 @@ def create_schedulers(task, config, search_space):
         }
 
         if dist_ips:
-            scheduler_config['dist_ip_addrs'] = dist_ips
+            scheduler_config['dist_ip_addrs'] = ['172.31.28.156']
 
         scheduler = ag.scheduler.FIFOScheduler(task, **scheduler_config)
         schedulers.append(scheduler)
