@@ -251,26 +251,26 @@ for task in tasks:
             #     dist_ip_addrs=ext_ips
             # ),  # add the FIFO scheduler
             #
-            # ag.scheduler.HyperbandScheduler(
-            #     task,
-            #     resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
-            #     time_attr='epoch',
-            #     reward_attr='accuracy',
-            #     time_out=math.inf,
-            #     max_reward=args.max_reward,
-            #     dist_ip_addrs=ext_ips
-            # ),  # add the Hyperband scheduler
-
-            ag.scheduler.RLScheduler(
+            ag.scheduler.HyperbandScheduler(
                 task,
                 resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
-                num_trials=10000,
-                time_out=math.inf,
                 time_attr='epoch',
                 reward_attr='accuracy',
+                time_out=math.inf,
                 max_reward=args.max_reward,
-                dist_ip_addrs = ext_ips
-            )  # add the FIFO scheduler
+                dist_ip_addrs=ext_ips
+            ),  # add the Hyperband scheduler
+
+            # ag.scheduler.RLScheduler(
+            #     task,
+            #     resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
+            #     num_trials=10000,
+            #     time_out=math.inf,
+            #     time_attr='epoch',
+            #     reward_attr='accuracy',
+            #     max_reward=args.max_reward,
+            #     dist_ip_addrs = ext_ips
+            # )  # add the FIFO scheduler
         ]
 
     # define the scheduler run time list
