@@ -241,25 +241,25 @@ for task in tasks:
         ]
     else:
         schedulers = [
-            ag.scheduler.OptimusScheduler(
-                task,
-                resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
-                time_attr='epoch',
-                reward_attr='accuracy',
-                time_out=math.inf,
-                max_reward=args.max_reward,
-                dist_ip_addrs=ext_ips
-            ),  # add the FIFO scheduler
-
-            ag.scheduler.HyperbandScheduler(
-                task,
-                resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
-                time_attr='epoch',
-                reward_attr='accuracy',
-                time_out=math.inf,
-                max_reward=args.max_reward,
-                dist_ip_addrs=ext_ips
-            ),  # add the Hyperband scheduler
+            # ag.scheduler.OptimusScheduler(
+            #     task,
+            #     resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
+            #     time_attr='epoch',
+            #     reward_attr='accuracy',
+            #     time_out=math.inf,
+            #     max_reward=args.max_reward,
+            #     dist_ip_addrs=ext_ips
+            # ),  # add the FIFO scheduler
+            #
+            # ag.scheduler.HyperbandScheduler(
+            #     task,
+            #     resource={'num_cpus': args.num_cpus, 'num_gpus': args.num_gpus},
+            #     time_attr='epoch',
+            #     reward_attr='accuracy',
+            #     time_out=math.inf,
+            #     max_reward=args.max_reward,
+            #     dist_ip_addrs=ext_ips
+            # ),  # add the Hyperband scheduler
 
             ag.scheduler.RLScheduler(
                 task,
