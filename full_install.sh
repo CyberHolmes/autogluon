@@ -1,3 +1,5 @@
+sudo apt-get update
+sudo apt-get install gcc python3-dev
 pip install torch
 pip install torchvision
 pip install torchtext
