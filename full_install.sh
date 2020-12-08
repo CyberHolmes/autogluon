@@ -1,4 +1,8 @@
 sudo apt-get update
+curl -sL \
+  "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh" > \
+  "Miniconda3.sh"
+bash Miniconda3.sh
 sudo apt-get install gcc python3-dev
 pip install torch
 pip install torchvision
