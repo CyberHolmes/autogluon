@@ -1,6 +1,5 @@
-pip install torch
+conda install pytorch torchvision cpuonly -c pytorch
 pip install torchtext
-pip install torchvision
 pip install mxnet
 pip install -e core/
 pip install -e tabular/
