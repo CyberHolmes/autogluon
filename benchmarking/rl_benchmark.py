@@ -425,8 +425,6 @@ def create_schedulers(task, config, search_space):
     reward_attr = config['tasks'][task.__name__]['reward_attr']
     dist_ips = config['dist_ips']
 
-    print(dist_ips)
-
     schedulers = []
 
     for controller in controllers:
