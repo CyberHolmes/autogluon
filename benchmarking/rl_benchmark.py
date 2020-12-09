@@ -463,7 +463,7 @@ if __name__ == "__main__":
 
     # count the number of machines
     if config['dist_ips']:
-        num_machines = len(config['dist_ips'])
+        num_machines = len(config['dist_ips']) + 1
     else:
         num_machines = 1
 
