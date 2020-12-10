@@ -484,7 +484,7 @@ if __name__ == "__main__":
     # run the experiment multiple time
     for experiment in range(args.bootstrap):
         # run the experiment for different search space sizes
-        for space_size in range(2, 10):
+        for space_size in [2, 4, 8]:
             # create all the tasks
             tasks, search_spaces = create_tasks(args.conf)
 
