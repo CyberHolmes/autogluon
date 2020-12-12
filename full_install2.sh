@@ -9,4 +9,5 @@ pip install -e extra/
 pip install -e text/
 pip install -e vision/
 pip install -e autogluon/
+pip install nvidia-ml-py boto3
 mkdir -p benchmarking/output/jct
