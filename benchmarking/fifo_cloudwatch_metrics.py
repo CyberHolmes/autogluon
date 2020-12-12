@@ -7,10 +7,10 @@ from pathlib import Path
 import pandas as pd
 import argparse
 # Click on Account Details and copy and paste the credentials into ~/.aws/credentials for AWS CLI then run the following code
-#scp -i "autogluon_arvind.pem" -r ubuntu@ec2-54-157-243-83.compute-1.amazonaws.com:~/autogluon/benchmarking/output/jct/ ./autog
+#scp -i "autogluon_arvind_gpu.pem" -r ubuntu@ec2-3-87-10-215.compute-1.amazonaws.com:~/autogluon/benchmarking/output/jct/ ./autog2
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--out', default='output/resource_util', help='output file')
+parser.add_argument('--out', default='output/resource_util/autog1', help='output file')
 
 args = parser.parse_args()
 if not os.path.exists(args.out):
@@ -32,9 +32,11 @@ results = pd.DataFrame({
     'search_space_size': [],
     'machine': [],
     'timestamp': [],
-    'resource_utilization':[]
+    'resource_utilization': []
 })
-EC2_instances = ['i-0742c2217fad05918', 'i-0c67e0d0d0c89cca2']
+EC2_instances = ['i-0cb9872251019a481']
+#EC2_instances = ['i-0750fccf339cbdf4f', 'i-07346a205ec87da05']
+#EC2_instances = ['i-0cb9872251019a481',  'i-0750fccf339cbdf4f', 'i-07346a205ec87da05']
 
 for i,ec2 in enumerate(EC2_instances):
     for j in range(jctlog.shape[0]):
@@ -58,6 +60,38 @@ for i,ec2 in enumerate(EC2_instances):
                 'Average'
             ]
         )
+        # response2 = cloudwatch.get_metric_statistics(
+        #     Namespace='DeepLearningTrain',
+        #     Dimensions=[
+        #         {
+        #             'Name': 'InstanceId',
+        #             'Value': ec2
+        #         },
+        #     ],
+        #     MetricName='GPU Usage',
+        #     StartTime=starttime,
+        #     EndTime=endtime,
+        #     Period=60,
+        #     Statistics=[
+        #         'Average'
+        #     ]
+        # )
+        # response3 = cloudwatch.get_metric_statistics(
+        #     Namespace='DeepLearningTrain',
+        #     Dimensions=[
+        #         {
+        #             'Name': 'InstanceId',
+        #             'Value': ec2
+        #         },
+        #     ],
+        #     MetricName='Memory Usage',
+        #     StartTime=starttime,
+        #     EndTime=endtime,
+        #     Period=60,
+        #     Statistics=[
+        #         'Average'
+        #     ]
+        # )
         Datapoints1 = response['Datapoints']
         for datapoint in Datapoints1:
             results = results.append({
