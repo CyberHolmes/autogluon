@@ -1,5 +1,4 @@
-pip install torch
-pip install torchvision
+conda install pytorch torchvision torchaudio cudatoolkit=11.0 -c pytorchpip install torchvision
 pip install torchtext
 pip install mxnet
 pip install -e core/
