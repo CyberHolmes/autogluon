@@ -1,4 +1,0 @@
-,task,searcher,runtime,accuracy,start_time,end_time,num_machines,experiment,search_space_size
-0,train_image_classification,skopt,257.571322,56.65,2020-12-08 22:25:39.580132,2020-12-08 22:29:57.151454,2.0,1.0,4.0
-1,train_image_classification,random,246.19768,57.73,2020-12-08 22:30:57.213631,2020-12-08 22:35:03.411311,2.0,1.0,4.0
-2,train_image_classification,bayesopt,255.223057,56.65,2020-12-08 22:36:03.460104,2020-12-08 22:40:18.683161,2.0,1.0,4.0
