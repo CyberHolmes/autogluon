@@ -63,7 +63,7 @@ def getUtilization(handle):
     return util, gpu_util, mem_util
 
 
-def logResults(i, util, gpu_util, mem_util, powDrawStr, temp):
+def logResults(i, util, gpu_util, mem_util):
     try:
         gpu_logs = open(TMP_FILE_SAVED, 'a+')
         writeString = str(i) + ',' + gpu_util + ',' + mem_util + ',' + powDrawStr + ',' + temp + '\n'
