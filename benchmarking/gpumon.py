@@ -29,7 +29,7 @@ my_NameSpace = 'DeepLearningTrain'
 sleep_interval = 10
 
 ### CHOOSE STORAGE RESOLUTION (BETWEEN 1-60) ####
-store_reso = 60
+store_reso = 30
 
 # Instance information
 BASE_URL = 'http://169.254.169.254/latest/meta-data/'
