@@ -12,8 +12,9 @@
 #  permissions and limitations under the License.
 
 
-import urllib2
+import urllib
 import boto3
+from nvidia_smi import handleError
 from pynvml import *
 from datetime import datetime
 from time import sleep
@@ -32,16 +33,17 @@ store_reso = 60
 
 # Instance information
 BASE_URL = 'http://169.254.169.254/latest/meta-data/'
-INSTANCE_ID = urllib2.urlopen(BASE_URL + 'instance-id').read()
-IMAGE_ID = urllib2.urlopen(BASE_URL + 'ami-id').read()
-INSTANCE_TYPE = urllib2.urlopen(BASE_URL + 'instance-type').read()
-INSTANCE_AZ = urllib2.urlopen(BASE_URL + 'placement/availability-zone').read()
+INSTANCE_ID = urllib.request.urlopen(BASE_URL + 'instance-id').read().decode('utf-8')
+IMAGE_ID = urllib.request.urlopen(BASE_URL + 'ami-id').read().decode('utf-8')
+INSTANCE_TYPE = urllib.request.urlopen(BASE_URL + 'instance-type').read().decode('utf-8')
+INSTANCE_AZ = urllib.request.urlopen(BASE_URL + 'placement/availability-zone').read().decode('utf-8')
 EC2_REGION = INSTANCE_AZ[:-1]
 
 TIMESTAMP = datetime.now().strftime('%Y-%m-%dT%H')
 TMP_FILE = '/tmp/GPU_TEMP'
 TMP_FILE_SAVED = TMP_FILE + TIMESTAMP
 
+print(EC2_REGION)
 # Create CloudWatch client
 cloudwatch = boto3.client('cloudwatch', region_name=EC2_REGION)
 
@@ -67,7 +69,7 @@ def logResults(i, util, gpu_util, mem_util, powDrawStr, temp):
         writeString = str(i) + ',' + gpu_util + ',' + mem_util + ',' + powDrawStr + ',' + temp + '\n'
         gpu_logs.write(writeString)
     except:
-        print("Error writing to file ", gpu_logs)
+        print(("Error writing to file ", gpu_logs))
     finally:
         gpu_logs.close()
     if (PUSH_TO_CW):
@@ -123,7 +125,6 @@ def main():
                 handle = nvmlDeviceGetHandleByIndex(i)
                 util, gpu_util, mem_util = getUtilization(handle)
                 logResults(i, util, gpu_util, mem_util)
-
             sleep(sleep_interval)
 
     finally:
