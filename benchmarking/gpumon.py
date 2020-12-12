@@ -11,7 +11,8 @@
 #  express or implied. See the License for the specific language governing
 #  permissions and limitations under the License.
 
-from urllib.request import urlopen
+
+import urllib2
 import boto3
 from pynvml import *
 from datetime import datetime
@@ -21,7 +22,7 @@ from time import sleep
 EC2_REGION = 'us-east-1'
 
 ###CHOOSE NAMESPACE PARMETERS HERE###
-my_NameSpace = 'AutogluonTrain'
+my_NameSpace = 'DeepLearningTrain'
 
 ### CHOOSE PUSH INTERVAL ####
 sleep_interval = 10
@@ -31,10 +32,10 @@ store_reso = 60
 
 # Instance information
 BASE_URL = 'http://169.254.169.254/latest/meta-data/'
-INSTANCE_ID = urlopen(BASE_URL + 'instance-id').read()
-IMAGE_ID = urlopen(BASE_URL + 'ami-id').read()
-INSTANCE_TYPE = urlopen(BASE_URL + 'instance-type').read()
-INSTANCE_AZ = urlopen(BASE_URL + 'placement/availability-zone').read()
+INSTANCE_ID = urllib2.urlopen(BASE_URL + 'instance-id').read()
+IMAGE_ID = urllib2.urlopen(BASE_URL + 'ami-id').read()
+INSTANCE_TYPE = urllib2.urlopen(BASE_URL + 'instance-type').read()
+INSTANCE_AZ = urllib2.urlopen(BASE_URL + 'placement/availability-zone').read()
 EC2_REGION = INSTANCE_AZ[:-1]
 
 TIMESTAMP = datetime.now().strftime('%Y-%m-%dT%H')
@@ -46,7 +47,6 @@ cloudwatch = boto3.client('cloudwatch', region_name=EC2_REGION)
 
 # Flag to push to CloudWatch
 PUSH_TO_CW = True
-
 
 def getUtilization(handle):
     try:
@@ -61,10 +61,10 @@ def getUtilization(handle):
     return util, gpu_util, mem_util
 
 
-def logResults(i, util, gpu_util, mem_util):
+def logResults(i, util, gpu_util, mem_util, powDrawStr, temp):
     try:
         gpu_logs = open(TMP_FILE_SAVED, 'a+')
-        writeString = str(i) + ',' + gpu_util + ',' + mem_util + ',' + '\n'
+        writeString = str(i) + ',' + gpu_util + ',' + mem_util + ',' + powDrawStr + ',' + temp + '\n'
         gpu_logs.write(writeString)
     except:
         print("Error writing to file ", gpu_logs)
@@ -122,7 +122,7 @@ def main():
             for i in range(deviceCount):
                 handle = nvmlDeviceGetHandleByIndex(i)
                 util, gpu_util, mem_util = getUtilization(handle)
-                logResults(i, util, gpu_util)
+                logResults(i, util, gpu_util, mem_util)
 
             sleep(sleep_interval)
 
