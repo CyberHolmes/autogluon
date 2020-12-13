@@ -119,7 +119,7 @@ for i,ec2 in enumerate(EC2_instances):
                 'search_space_size': row['search_space_size'].iloc[0],
                 'machine': i,
                 'timestamp': datapoint['Timestamp'],
-                'cpu_utilization': datapoint['Average']
+                'gpu_utilization': datapoint['Average']
             }, ignore_index=True)
             # save the experiment details
 results_cpu.to_csv(args.out+'/'+'rl_cpu_util.csv')
