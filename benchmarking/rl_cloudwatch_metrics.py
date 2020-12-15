@@ -10,7 +10,7 @@ import argparse
 #scp -i "autogluon_arvind.pem" -r ubuntu@ec2-54-157-243-83.compute-1.amazonaws.com:~/autogluon/benchmarking/output/jct/ ./autog
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--out', default='output/resource_util/ag1_1', help='output file')
+parser.add_argument('--out', default='output/resource_util/ag3_2', help='output file')
 
 args = parser.parse_args()
 if not os.path.exists(args.out):
@@ -18,7 +18,7 @@ if not os.path.exists(args.out):
     Path(cwd).mkdir(parents=True, exist_ok=True)
 
 
-jctlog = pd.read_csv("./output/jct/rl_benchmark.csv")
+jctlog = pd.read_csv("./output/jct/autog3_rl_2/rl_benchmark.csv")
 #print(jctlog)
 cloudwatch = boto3.client('cloudwatch')
 
@@ -49,9 +49,9 @@ results_gpu = pd.DataFrame({
     'timestamp': [],
     'gpu_utilization':[]
 })
-EC2_instances = ['i-0cb9872251019a481']
-#EC2_instances = ['i-0750fccf339cbdf4f', 'i-07346a205ec87da05']
-#EC2_instances = ['i-0cb9872251019a481',  'i-0750fccf339cbdf4f', 'i-07346a205ec87da05']
+#EC2_instances = ['i-064e028045c8b2d1a']
+#EC2_instances = ['i-053768149ff5581fd', 'i-03dd291d686abf310']
+EC2_instances = ['i-053768149ff5581fd', 'i-03dd291d686abf310', 'i-064e028045c8b2d1a']
 
 for i,ec2 in enumerate(EC2_instances):
     for j in range(jctlog.shape[0]):
@@ -81,6 +81,18 @@ for i,ec2 in enumerate(EC2_instances):
                 {
                     'Name': 'InstanceId',
                     'Value': ec2
+                },
+                {
+                    'Name': 'ImageId',
+                    'Value': 'ami-0404ddec9491a5a31'
+                },
+                {
+                    'Name': 'InstanceType',
+                    'Value': 'g4dn.xlarge'
+                },
+                {
+                    'Name': 'GPUNumber',
+                    'Value': '0'
                 },
             ],
             MetricName='GPU Usage',

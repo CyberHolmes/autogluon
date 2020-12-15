@@ -10,7 +10,7 @@ import argparse
 #scp -i "autogluon_arvind_gpu.pem" -r ubuntu@ec2-3-87-10-215.compute-1.amazonaws.com:~/autogluon/benchmarking/output/jct/ ./autog2
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--out', default='output/resource_util/ag1_1', help='output file')
+parser.add_argument('--out', default='output/resource_util/ag3_2', help='output file')
 
 args = parser.parse_args()
 if not os.path.exists(args.out):
@@ -18,7 +18,7 @@ if not os.path.exists(args.out):
     Path(cwd).mkdir(parents=True, exist_ok=True)
 
 
-jctlog = pd.read_csv("./output/jct/fifo_benchmark.csv")
+jctlog = pd.read_csv("./output/jct/autog3_fifo_2/fifo_benchmark.csv")
 cloudwatch = boto3.client('cloudwatch')
 
 # create the results dataframe
@@ -47,9 +47,9 @@ results_gpu = pd.DataFrame({
     'timestamp': [],
     'gpu_utilization': []
 })
-EC2_instances = ['i-0cb9872251019a481']
+#EC2_instances = ['i-0cb9872251019a481']
 #EC2_instances = ['i-0750fccf339cbdf4f', 'i-07346a205ec87da05']
-#EC2_instances = ['i-0cb9872251019a481',  'i-0750fccf339cbdf4f', 'i-07346a205ec87da05']
+EC2_instances = ['i-0750fccf339cbdf4f', 'i-0cb9872251019a481', 'i-07346a205ec87da05']
 
 for i,ec2 in enumerate(EC2_instances):
     for j in range(jctlog.shape[0]):
@@ -80,6 +80,18 @@ for i,ec2 in enumerate(EC2_instances):
                     'Name': 'InstanceId',
                     'Value': ec2
                 },
+                {
+                    'Name': 'ImageId',
+                    'Value': 'ami-0404ddec9491a5a31'
+                },
+                {
+                    'Name': 'InstanceType',
+                    'Value': 'g4dn.xlarge'
+                },
+                {
+                    'Name': 'GPUNumber',
+                    'Value': '0'
+                },
             ],
             MetricName='GPU Usage',
             StartTime=starttime,
@@ -103,6 +115,8 @@ for i,ec2 in enumerate(EC2_instances):
                 'timestamp': datapoint['Timestamp'],
                 'cpu_utilization': datapoint['Average']
             }, ignore_index=True)
+
+        #print(response2)
         Datapoints2 = response2['Datapoints']
         for datapoint in Datapoints2:
             results_gpu = results_gpu.append({
